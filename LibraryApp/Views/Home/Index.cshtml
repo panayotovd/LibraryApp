@@ -1,8 +1,40 @@
 ﻿@{
-    ViewData["Title"] = "Home Page";
+    ViewData["Title"] = "Начало";
 }
+<div class="p-5 mb-4 bg-light rounded-3">
+    <div class="container py-5">
+        <h1 class="display-5 fw-bold">LibraryApp</h1>
+        <p class="col-md-8 fs-5">Управлявай книги, автори, членове и събития.</p>
+        <a class="btn btn-primary btn-lg" href="@Url.Action("Index", "Books")">Разгледай книги</a>
+    </div>
+</div>
 
-<div class="text-center">
-    <h1 class="display-4">Welcome</h1>
-    <p>Learn about <a href="https://learn.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
+<div class="row g-3">
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-body">
+                <h5 class="card-title">Книги</h5>
+                <p class="card-text">CRUD, търсене и филтри по автор.</p>
+                <a class="btn btn-outline-primary" href="@Url.Action("Index", "Books")">Към книгите</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-body">
+                <h5 class="card-title">Автори</h5>
+                <p class="card-text">CRUD и защита при изтриване, ако имат книги.</p>
+                <a class="btn btn-outline-primary" href="@Url.Action("Index", "Authors")">Към авторите</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-body">
+                <h5 class="card-title">Събития</h5>
+                <p class="card-text">Много-към-много с членове, регистрация/отписване.</p>
+                <a class="btn btn-outline-primary" href="@Url.Action("Index", "Events")">Към събитията</a>
+            </div>
+        </div>
+    </div>
 </div>

@@ -1,0 +1,80 @@
+﻿@model LibraryApp.Models.ViewModels.PagedResult<object>
+
+@if (Model.TotalPages >= 0)
+{
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 mt-3">
+
+        <!-- Лява част: инфо за страниците -->
+        <div class="text-muted">
+            Страница @Model.Page от @Model.TotalPages
+            (общо @Model.TotalItems записа, @Model.PageSize на страница)
+        </div>
+
+        <!-- Дясна част: навигация + PageSize -->
+        <div class="d-flex align-items-center gap-3">
+
+            @* Пейджър навигация *@
+            @if (Model.TotalPages > 1)
+            {
+                <nav aria-label="Page navigation">
+                    <ul class="pagination mb-0">
+                        @{
+                            string ReplacePageInQs(int p)
+                            {
+                                var qs = Model.QueryString ?? "";
+                                return qs.Contains("page=")
+                                ? qs.Replace("page=" + Model.Page, "page=" + p)
+                                : (string.IsNullOrEmpty(qs) ? $"?page={p}" : $"{qs}&page={p}");
+                            }
+                        }
+
+                        <li class="page-item @(Model.Page <= 1 ? "disabled" : "")">
+                            <a class="page-link" href="@ReplacePageInQs(Model.Page - 1)">«</a>
+                        </li>
+
+                        @for (int p = 1; p <= Model.TotalPages; p++)
+                        {
+                            <li class="page-item @(p == Model.Page ? "active" : "")">
+                                <a class="page-link" href="@ReplacePageInQs(p)">@p</a>
+                            </li>
+                        }
+
+                        <li class="page-item @(Model.Page >= Model.TotalPages ? "disabled" : "")">
+                            <a class="page-link" href="@ReplacePageInQs(Model.Page + 1)">»</a>
+                        </li>
+                    </ul>
+                </nav>
+            }
+
+            @* PageSize dropdown (GET форма, пази всички текущи параметри) *@
+            <form method="get" class="d-flex align-items-center gap-2">
+                @{
+                    // Пази всички текущи параметри от URL-а, без page/pageSize:
+                    var query = Context.Request.Query;
+                    foreach (var kv in query)
+                    {
+                        var key = kv.Key;
+                        if (string.Equals(key, "page", System.StringComparison.OrdinalIgnoreCase)) continue;
+                        if (string.Equals(key, "pageSize", System.StringComparison.OrdinalIgnoreCase)) continue;
+
+                        foreach (var val in kv.Value)
+                        {
+                            <input type="hidden" name="@key" value="@val" />
+                        }
+                    }
+                }
+
+                <!-- при смяна на pageSize — връщаме на първа страница -->
+                <input type="hidden" name="page" value="1" />
+
+                <label class="form-label mb-0">На страница:</label>
+                <select name="pageSize" class="form-select form-select-sm" onchange="this.form.submit()">
+                    <option value="10" selected="@(Model.PageSize == 10)">10</option>
+                    <option value="20" selected="@(Model.PageSize == 20)">20</option>
+                    <option value="50" selected="@(Model.PageSize == 50)">50</option>
+                </select>
+                <noscript><button class="btn btn-sm btn-outline-primary">Приложи</button></noscript>
+            </form>
+        </div>
+    </div>
+}

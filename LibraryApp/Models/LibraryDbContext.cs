@@ -18,14 +18,15 @@ namespace LibraryApp.Models
             modelBuilder.Entity<EventMember>()
                 .HasKey(em => new { em.EventId, em.MemberId });
 
-            modelBuilder.Entity<EventMember>()
-                .HasOne(em => em.Event)
-                .WithMany(e => e.EventMembers)
-                .HasForeignKey(em => em.EventId);
+            modelBuilder.Entity<Event>()
+                .HasMany(e => e.EventMembers)
+                .WithOne(em => em.Event)
+                .HasForeignKey(em => em.EventId)
+                .OnDelete(DeleteBehavior.Cascade);
 
             modelBuilder.Entity<EventMember>()
                 .HasOne(em => em.Member)
-                .WithMany()
+                .WithMany() // ако нямаш Member.EventMembers навигация
                 .HasForeignKey(em => em.MemberId);
         }
     }

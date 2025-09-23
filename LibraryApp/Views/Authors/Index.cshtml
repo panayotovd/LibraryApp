@@ -1,25 +1,33 @@
 ﻿@model IEnumerable<LibraryApp.Models.Author>
 @{
     ViewData["Title"] = "Автори";
+    var pager = (LibraryApp.Models.ViewModels.PagedResult<object>)ViewBag.Pager;
+    var f = ViewBag.Filters;
 }
+
 <h1 class="mb-3">Автори</h1>
 
-<form method="get" class="row g-2 mb-3">
+<form method="get" class="row g-2 mb-3 align-items-center">
     <div class="col-md-6">
-        <input name="q" value="@ViewBag.Search" class="form-control" placeholder="Търси автор по име" />
+        <input name="q" value="@f.q" class="form-control" placeholder="Търси по име" />
     </div>
-    <div class="col-md-6">
-        <button class="btn btn-primary">Търси</button>
-        <a class="btn btn-outline-secondary" href="@Url.Action("Index")">Изчисти</a>
-        <a class="btn btn-success float-end" href="@Url.Action("Create")">+ Нов автор</a>
+
+    <div class="col-md-auto">
+        <button class="btn btn-primary">Филтрирай</button>
+        <a class="btn btn-outline-secondary ms-2" href="@Url.Action("Index")">Изчисти</a>
     </div>
 </form>
+
+
+<div class="d-flex justify-content-end mb-2">
+    <a class="btn btn-success" href="@Url.Action("Create")">+ Нов автор</a>
+</div>
 
 <table class="table table-striped align-middle">
     <thead>
         <tr>
-            <th>Име</th>
-            <th style="width:220px"></th>
+            <th>@Html.SortLink("name", "Име", (object)ViewBag.Filters)</th>
+            <th style="width:150px"></th>
         </tr>
     </thead>
     <tbody>
@@ -27,12 +35,13 @@
         {
             <tr>
                 <td>@a.Name</td>
-                <td>
-                    <a class="btn btn-sm btn-primary" href="@Url.Action("Details", new { id = a.Id })">Детайли</a>
-                    <a class="btn btn-sm btn-warning" href="@Url.Action("Edit", new { id = a.Id })">Редакция</a>
-                    <a class="btn btn-sm btn-danger" href="@Url.Action("Delete", new { id = a.Id })">Изтриване</a>
+                <td class="text-nowrap">
+                    @await Html.PartialAsync("_CrudActions",
+                    new LibraryApp.Models.ViewModels.CrudActionsModel { Controller = "Authors", Id = a.Id })
                 </td>
             </tr>
         }
     </tbody>
 </table>
+
+@await Html.PartialAsync("_Pager", pager)

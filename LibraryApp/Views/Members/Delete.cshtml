@@ -1,0 +1,12 @@
+﻿@model LibraryApp.Models.Member
+@{
+    ViewData["Title"] = "Изтриване на член";
+}
+<h1>Изтриване на член</h1>
+<p>Сигурни ли сте, че искате да изтриете <strong>@Model.FullName</strong>?</p>
+
+<form asp-action="Delete" method="post">
+    <input type="hidden" asp-for="Id" />
+    <button class="btn btn-danger">Изтрий</button>
+    <a class="btn btn-secondary" href="@Url.Action("Index")">Откажи</a>
+</form>

@@ -1,0 +1,15 @@
+﻿@{
+    // Копирай всички текущи query параметри,
+    // НО под имена с префикс "state_"
+    var q = Context.Request.Query;
+    foreach (var kv in q)
+    {
+        var key = kv.Key;
+        if (string.Equals(key, "id", System.StringComparison.OrdinalIgnoreCase)) continue;
+
+        foreach (var val in kv.Value)
+        {
+            <input type="hidden" name="state_@key" value="@val" />
+        }
+    }
+}

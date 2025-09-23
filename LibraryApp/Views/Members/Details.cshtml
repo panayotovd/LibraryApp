@@ -1,0 +1,15 @@
+﻿@model LibraryApp.Models.Member
+@{
+    ViewData["Title"] = "Детайли за член";
+}
+<h1>@Model.FullName</h1>
+<hr />
+<dl class="row">
+    <dt class="col-sm-2">Email</dt>
+    <dd class="col-sm-10">@Model.Email</dd>
+
+    <dt class="col-sm-2">Член от</dt>
+    <dd class="col-sm-10">@Model.JoinedAt.ToString("dd.MM.yyyy")</dd>
+</dl>
+<a class="btn btn-warning" href="@Url.Action("Edit", new { id = Model.Id })">Редакция</a>
+<a class="btn btn-secondary" href="@Url.Action("Index")">Назад</a>

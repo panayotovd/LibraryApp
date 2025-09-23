@@ -1,0 +1,26 @@
+﻿@model LibraryApp.Models.Member
+@{
+    ViewData["Title"] = "Редакция на член";
+}
+<h1>Редакция на член</h1>
+<hr />
+<form asp-action="Edit" method="post" class="row g-3">
+    <input type="hidden" asp-for="Id" />
+    <div class="col-md-6">
+        <label asp-for="FullName" class="form-label"></label>
+        <input asp-for="FullName" class="form-control" />
+        <span asp-validation-for="FullName" class="text-danger"></span>
+    </div>
+    <div class="col-md-6">
+        <label asp-for="Email" class="form-label"></label>
+        <input asp-for="Email" class="form-control" />
+        <span asp-validation-for="Email" class="text-danger"></span>
+    </div>
+    <div class="col-12">
+        <button class="btn btn-primary">Запази</button>
+        <a class="btn btn-secondary" href="@Url.Action("Index")">Назад</a>
+    </div>
+</form>
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

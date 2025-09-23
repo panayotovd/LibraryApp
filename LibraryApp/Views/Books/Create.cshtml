@@ -5,6 +5,7 @@
 <h1>Нова книга</h1>
 <hr />
 <form asp-action="Create" method="post" class="row g-3">
+    @await Html.PartialAsync("_StateHiddenFields")
     <div class="col-md-6">
         <label asp-for="Title" class="form-label"></label>
         <input asp-for="Title" class="form-control" />
@@ -33,7 +34,11 @@
     </div>
     <div class="col-12">
         <button class="btn btn-success">Запази</button>
-        <a class="btn btn-secondary" href="@Url.Action("Index")">Назад</a>
+        <a class="btn btn-secondary"
+           asp-action="Index"
+           asp-all-route-data="@(RouteStateHelper.BuildFromRequest(Context.Request).ToDictionary(kvp => kvp.Key, kvp => kvp.Value?.ToString()))">
+            Назад
+        </a>
     </div>
 </form>
 

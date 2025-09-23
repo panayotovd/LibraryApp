@@ -11,6 +11,12 @@
 
 <form asp-action="Delete" method="post">
     <input type="hidden" asp-for="Id" />
+    @await Html.PartialAsync("_StateHiddenFields")
     <button class="btn btn-danger">Изтрий</button>
     <a class="btn btn-secondary" href="@Url.Action("Index")">Откажи</a>
+    <a class="btn btn-secondary"
+       asp-action="Index"
+       asp-all-route-data="@(RouteStateHelper.BuildFromRequest(Context.Request).ToDictionary(kvp => kvp.Key, kvp => kvp.Value?.ToString()))">
+        Назад
+    </a>
 </form>

@@ -1,32 +1,74 @@
-﻿@model IEnumerable<LibraryApp.Models.Book>
+﻿@using Microsoft.AspNetCore.Html
 @{
-    ViewData["Title"] = "Книги";
+    var pager = (LibraryApp.Models.ViewModels.PagedResult<object>)ViewBag.Pager;
+    var f = ViewBag.Filters;
+    Func<string, string> nextDir = col =>
+        ((string)f.sort == col && (string)f.dir == "asc") ? "desc" : "asc";
+
+    Func<string, string> sortUrl = col => Url.Action("Index", new
+    {
+        q = f.q,
+        authorId = f.authorId,
+        yearFrom = f.yearFrom,
+        yearTo = f.yearTo,
+        sort = col,
+        dir = nextDir(col),
+        page = 1,
+        pageSize = f.pageSize
+    }) ?? string.Empty; // Fix: ensure non-null return
+
+    Func<string, IHtmlContent> caret = col =>
+        new HtmlString(((string)f.sort == col)
+            ? ((string)f.dir == "asc" ? " &#9650;" : " &#9660;") // ▲ / ▼
+            : "");
 }
+
+
+
 <h1 class="mb-3">Книги</h1>
 
-<form method="get" class="row g-2 mb-3">
-    <div class="col-md-4">
-        <input name="q" value="@ViewBag.Search" class="form-control" placeholder="Търси по заглавие или ISBN" />
+<form method="get" class="row g-2 mb-3 align-items-center">
+    <div class="col-md-3">
+        <input name="q" value="@f.q" class="form-control" placeholder="Търси: заглавие / ISBN / автор" />
     </div>
-    <div class="col-md-4">
-        <select name="authorId" class="form-select" asp-items="ViewBag.Authors">
+
+    <div class="col-md-2">
+        <select name="authorId" class="form-select">
             <option value="">-- Автор --</option>
+            @if (ViewBag.Authors is IEnumerable<SelectListItem> authors)
+            {
+                foreach (var a in authors)
+                {
+                    <option value="@a.Value" selected="@(f.authorId?.ToString() == a.Value)">@a.Text</option>
+                }
+            }
         </select>
     </div>
-    <div class="col-md-4">
+
+    <div class="col-md-2">
+        <input type="number" name="yearFrom" value="@f.yearFrom" class="form-control" placeholder="От година" />
+    </div>
+    <div class="col-md-2">
+        <input type="number" name="yearTo" value="@f.yearTo" class="form-control" placeholder="До година" />
+    </div>
+
+    <div class="col-md-auto">
         <button class="btn btn-primary">Филтрирай</button>
-        <a class="btn btn-outline-secondary" href="@Url.Action("Index")">Изчисти</a>
-        <a class="btn btn-success float-end" href="@Url.Action("Create")">+ Нова книга</a>
+        <a class="btn btn-outline-secondary ms-2" href="@Url.Action("Index")">Изчисти</a>
     </div>
 </form>
+
+<div class="d-flex justify-content-end mb-2">
+    <a class="btn btn-success" href="@Url.Action("Create")">+ Нова книга</a>
+</div>
 
 <table class="table table-striped align-middle">
     <thead>
         <tr>
-            <th>Заглавие</th>
-            <th>Автор</th>
+            <th>@Html.SortLink("title", "Заглавие", (object)ViewBag.Filters)</th>
+            <th>@Html.SortLink("author", "Автор", (object)ViewBag.Filters)</th>
             <th>ISBN</th>
-            <th>Година</th>
+            <th>@Html.SortLink("year", "Година", (object)ViewBag.Filters)</th>
             <th style="width:220px"></th>
         </tr>
     </thead>
@@ -38,12 +80,15 @@
                 <td>@b.Author?.Name</td>
                 <td>@b.ISBN</td>
                 <td>@b.Year</td>
-                <td>
-                    <a class="btn btn-sm btn-primary" href="@Url.Action("Details", new { id = b.Id })">Детайли</a>
-                    <a class="btn btn-sm btn-warning" href="@Url.Action("Edit", new { id = b.Id })">Редакция</a>
-                    <a class="btn btn-sm btn-danger" href="@Url.Action("Delete", new { id = b.Id })">Изтриване</a>
-                </td>
-            </tr>
+
+                <!-- Остави САМО това: -->
+                <td class="text-nowrap">
+                    @await Html.PartialAsync("_CrudActions",
+                    new LibraryApp.Models.ViewModels.CrudActionsModel { Controller = "Books", Id = b.Id })
+            </td>
+        </tr>
         }
     </tbody>
 </table>
+
+@await Html.PartialAsync("_Pager", pager)

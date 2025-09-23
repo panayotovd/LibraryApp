@@ -1,0 +1,52 @@
+﻿@model IEnumerable<LibraryApp.Models.Member>
+@{
+    ViewData["Title"] = "Членове";
+    var pager = (LibraryApp.Models.ViewModels.PagedResult<object>)ViewBag.Pager;
+    var f = ViewBag.Filters;
+}
+
+<h1 class="mb-3">Членове</h1>
+
+<form method="get" class="row g-2 mb-3 align-items-center">
+    <div class="col-md-5">
+        <input name="q" value="@f.q" class="form-control" placeholder="Търси по име или email" />
+    </div>
+
+    <div class="col-md-auto">
+        <button class="btn btn-primary">Филтрирай</button>
+        <a class="btn btn-outline-secondary ms-2" href="@Url.Action("Index")">Изчисти</a>
+    </div>
+</form>
+
+<div class="d-flex justify-content-end mb-2">
+    <a class="btn btn-success" href="@Url.Action("Create")">+ Нов член</a>
+</div>
+
+
+<table class="table table-striped align-middle">
+    <thead>
+        <tr>
+            <th>@Html.SortLink("name", "Име", (object)ViewBag.Filters)</th>
+            <th>@Html.SortLink("email", "Email", (object)ViewBag.Filters)</th>
+            <th>@Html.SortLink("joined", "Дата на създаване", (object)ViewBag.Filters)</th>
+            <th style="width:300px"></th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var m in Model)
+        {
+            <tr>
+                <td>@m.FullName</td>
+                <td>@m.Email</td>
+                <td>@m.JoinedAt.ToString("dd.MM.yyyy")</td>
+                <td>
+                <td class="text-end text-nowrap">
+                    @await Html.PartialAsync("_CrudActions",
+                    new LibraryApp.Models.ViewModels.CrudActionsModel { Controller = "Members", Id = m.Id })
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@await Html.PartialAsync("_Pager", pager)
