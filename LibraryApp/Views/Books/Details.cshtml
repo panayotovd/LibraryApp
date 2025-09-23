@@ -1,0 +1,21 @@
+﻿@model LibraryApp.Models.Book
+@{
+    ViewData["Title"] = "Детайли";
+}
+<h1>@Model.Title</h1>
+<hr />
+<dl class="row">
+    <dt class="col-sm-2">Автор</dt>
+    <dd class="col-sm-10">@Model.Author?.Name</dd>
+
+    <dt class="col-sm-2">ISBN</dt>
+    <dd class="col-sm-10">@Model.ISBN</dd>
+
+    <dt class="col-sm-2">Година</dt>
+    <dd class="col-sm-10">@Model.Year</dd>
+
+    <dt class="col-sm-2">Описание</dt>
+    <dd class="col-sm-10">@Model.Summary</dd>
+</dl>
+<a class="btn btn-warning" href="@Url.Action("Edit", new { id = Model.Id })">Редакция</a>
+<a class="btn btn-secondary" href="@Url.Action("Index")">Назад</a>

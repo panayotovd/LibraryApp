@@ -1,0 +1,38 @@
+﻿@model IEnumerable<LibraryApp.Models.Author>
+@{
+    ViewData["Title"] = "Автори";
+}
+<h1 class="mb-3">Автори</h1>
+
+<form method="get" class="row g-2 mb-3">
+    <div class="col-md-6">
+        <input name="q" value="@ViewBag.Search" class="form-control" placeholder="Търси автор по име" />
+    </div>
+    <div class="col-md-6">
+        <button class="btn btn-primary">Търси</button>
+        <a class="btn btn-outline-secondary" href="@Url.Action("Index")">Изчисти</a>
+        <a class="btn btn-success float-end" href="@Url.Action("Create")">+ Нов автор</a>
+    </div>
+</form>
+
+<table class="table table-striped align-middle">
+    <thead>
+        <tr>
+            <th>Име</th>
+            <th style="width:220px"></th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var a in Model)
+        {
+            <tr>
+                <td>@a.Name</td>
+                <td>
+                    <a class="btn btn-sm btn-primary" href="@Url.Action("Details", new { id = a.Id })">Детайли</a>
+                    <a class="btn btn-sm btn-warning" href="@Url.Action("Edit", new { id = a.Id })">Редакция</a>
+                    <a class="btn btn-sm btn-danger" href="@Url.Action("Delete", new { id = a.Id })">Изтриване</a>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>

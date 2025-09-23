@@ -1,0 +1,16 @@
+﻿@model LibraryApp.Models.Book
+@{
+    ViewData["Title"] = "Изтриване";
+}
+<h1>Изтриване</h1>
+<p>Сигурни ли сте, че искате да изтриете тази книга?</p>
+<ul>
+    <li><strong>@Model.Title</strong> от @Model.Author?.Name</li>
+    <li>ISBN: @Model.ISBN</li>
+</ul>
+
+<form asp-action="Delete" method="post">
+    <input type="hidden" asp-for="Id" />
+    <button class="btn btn-danger">Изтрий</button>
+    <a class="btn btn-secondary" href="@Url.Action("Index")">Откажи</a>
+</form>

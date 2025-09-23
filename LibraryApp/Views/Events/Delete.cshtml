@@ -1,0 +1,17 @@
+﻿@model LibraryApp.Models.Event
+@{
+    ViewData["Title"] = "Изтриване на събитие";
+}
+<h1>Изтриване на събитие</h1>
+<p>Сигурни ли сте, че искате да изтриете <strong>@Model.Title</strong> (@Model.StartAt.ToString("dd.MM.yyyy HH:mm"))?</p>
+
+@if (Model.EventMembers != null && Model.EventMembers.Any())
+{
+    <div class="alert alert-warning">Ще бъдат премахнати и участниците от събитието.</div>
+}
+
+<form asp-action="Delete" method="post">
+    <input type="hidden" name="Id" value="@Model.Id" />
+    <button class="btn btn-danger">Изтрий</button>
+    <a class="btn btn-secondary" href="@Url.Action("Index")">Откажи</a>
+</form>

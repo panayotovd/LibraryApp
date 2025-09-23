@@ -1,0 +1,46 @@
+﻿@model LibraryApp.Models.ViewModels.EventFormViewModel
+@{
+    ViewData["Title"] = "Ново събитие";
+}
+<h1>Ново събитие</h1>
+<hr />
+<form asp-action="Create" method="post" class="row g-3">
+    <div class="col-md-7">
+        <label asp-for="Title" class="form-label"></label>
+        <input asp-for="Title" class="form-control" />
+        <span asp-validation-for="Title" class="text-danger"></span>
+    </div>
+    <div class="col-md-5">
+        <label asp-for="StartAt" class="form-label">Начало</label>
+        <input asp-for="StartAt" type="datetime-local" class="form-control" />
+        <span asp-validation-for="StartAt" class="text-danger"></span>
+    </div>
+    <div class="col-12">
+        <label asp-for="Description" class="form-label"></label>
+        <textarea asp-for="Description" class="form-control" rows="3"></textarea>
+    </div>
+
+    <div class="col-12">
+        <label class="form-label">Участници (членове)</label>
+        <div class="border rounded p-2" style="max-height:220px; overflow:auto;">
+            @foreach (var m in Model.AllMembers)
+            {
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox"
+                           name="SelectedMemberIds" value="@m.Id"
+                           @(Model.SelectedMemberIds.Contains(m.Id) ? "checked" : "") />
+                    <label class="form-check-label">@m.FullName (@m.Email)</label>
+                </div>
+            }
+        </div>
+    </div>
+
+    <div class="col-12">
+        <button class="btn btn-success">Създай</button>
+        <a class="btn btn-secondary" href="@Url.Action("Index")">Назад</a>
+    </div>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

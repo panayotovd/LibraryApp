@@ -1,0 +1,20 @@
+﻿@model LibraryApp.Models.Author
+@{
+    ViewData["Title"] = "Нов автор";
+}
+<h1>Нов автор</h1>
+<hr />
+<form asp-action="Create" method="post" class="row g-3">
+    <div class="col-md-6">
+        <label asp-for="Name" class="form-label"></label>
+        <input asp-for="Name" class="form-control" />
+        <span asp-validation-for="Name" class="text-danger"></span>
+    </div>
+    <div class="col-12">
+        <button class="btn btn-success">Запази</button>
+        <a class="btn btn-secondary" href="@Url.Action("Index")">Назад</a>
+    </div>
+</form>
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

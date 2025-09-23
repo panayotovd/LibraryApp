@@ -1,0 +1,22 @@
+﻿@model LibraryApp.Models.Author
+@{
+    ViewData["Title"] = "Детайли за автор";
+}
+<h1>@Model.Name</h1>
+<hr />
+@if (Model.Books != null && Model.Books.Any())
+{
+    <h5>Книги:</h5>
+    <ul>
+        @foreach (var b in Model.Books)
+        {
+            <li>@b.Title (@b.Year)</li>
+        }
+    </ul>
+}
+else
+{
+    <p class="text-muted">Няма добавени книги.</p>
+}
+<a class="btn btn-warning" href="@Url.Action("Edit", new { id = Model.Id })">Редакция</a>
+<a class="btn btn-secondary" href="@Url.Action("Index")">Назад</a>

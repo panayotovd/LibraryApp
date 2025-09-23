@@ -1,0 +1,38 @@
+﻿@model LibraryApp.Models.Author
+@{
+    ViewData["Title"] = "Изтриване на автор";
+}
+<h1>Изтриване на автор</h1>
+
+@if (ViewBag.BlockReason != null)
+{
+    <div class="alert alert-warning">@ViewBag.BlockReason</div>
+}
+
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger">@TempData["Error"]</div>
+}
+
+<p>Сигурни ли сте, че искате да изтриете <strong>@Model.Name</strong>?</p>
+
+@if (Model.Books != null && Model.Books.Any())
+{
+    <p>Този автор има следните книги:</p>
+    <ul>
+        @foreach (var b in Model.Books)
+        {
+            <li>@b.Title (@b.Year)</li>
+        }
+    </ul>
+    <p class="text-muted">Първо изтрийте/преместете книгите към друг автор.</p>
+    <a class="btn btn-secondary" href="@Url.Action("Index")">Назад</a>
+}
+else
+{
+    <form asp-action="Delete" method="post">
+        <input type="hidden" asp-for="Id" />
+        <button class="btn btn-danger">Изтрий</button>
+        <a class="btn btn-secondary" href="@Url.Action("Index")">Откажи</a>
+    </form>
+}

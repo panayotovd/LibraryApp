@@ -1,0 +1,49 @@
+﻿@model IEnumerable<LibraryApp.Models.Book>
+@{
+    ViewData["Title"] = "Книги";
+}
+<h1 class="mb-3">Книги</h1>
+
+<form method="get" class="row g-2 mb-3">
+    <div class="col-md-4">
+        <input name="q" value="@ViewBag.Search" class="form-control" placeholder="Търси по заглавие или ISBN" />
+    </div>
+    <div class="col-md-4">
+        <select name="authorId" class="form-select" asp-items="ViewBag.Authors">
+            <option value="">-- Автор --</option>
+        </select>
+    </div>
+    <div class="col-md-4">
+        <button class="btn btn-primary">Филтрирай</button>
+        <a class="btn btn-outline-secondary" href="@Url.Action("Index")">Изчисти</a>
+        <a class="btn btn-success float-end" href="@Url.Action("Create")">+ Нова книга</a>
+    </div>
+</form>
+
+<table class="table table-striped align-middle">
+    <thead>
+        <tr>
+            <th>Заглавие</th>
+            <th>Автор</th>
+            <th>ISBN</th>
+            <th>Година</th>
+            <th style="width:220px"></th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var b in Model)
+        {
+            <tr>
+                <td>@b.Title</td>
+                <td>@b.Author?.Name</td>
+                <td>@b.ISBN</td>
+                <td>@b.Year</td>
+                <td>
+                    <a class="btn btn-sm btn-primary" href="@Url.Action("Details", new { id = b.Id })">Детайли</a>
+                    <a class="btn btn-sm btn-warning" href="@Url.Action("Edit", new { id = b.Id })">Редакция</a>
+                    <a class="btn btn-sm btn-danger" href="@Url.Action("Delete", new { id = b.Id })">Изтриване</a>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>

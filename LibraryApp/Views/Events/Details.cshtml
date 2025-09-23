@@ -1,0 +1,57 @@
+﻿@model LibraryApp.Models.Event
+@{
+    ViewData["Title"] = "Детайли за събитие";
+    var available = (IEnumerable<LibraryApp.Models.Member>)ViewBag.AvailableMembers ?? Enumerable.Empty<LibraryApp.Models.Member>();
+}
+<h1>@Model.Title</h1>
+<p class="text-muted">@Model.StartAt.ToString("dd.MM.yyyy HH:mm")</p>
+<p>@Model.Description</p>
+<hr />
+
+<div class="row">
+    <div class="col-md-6">
+        <h5>Участници (@(Model.EventMembers?.Count ?? 0))</h5>
+        @if (Model.EventMembers != null && Model.EventMembers.Any())
+        {
+            <ul class="list-group">
+                @foreach (var em in Model.EventMembers.OrderBy(x => x.Member.FullName))
+                {
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <span>@em.Member.FullName (@em.Member.Email)</span>
+                        <form asp-action="RemoveMember" method="post" class="m-0">
+                            <input type="hidden" name="eventId" value="@Model.Id" />
+                            <input type="hidden" name="memberId" value="@em.MemberId" />
+                            <button class="btn btn-sm btn-outline-danger">Премахни</button>
+                        </form>
+                    </li>
+                }
+            </ul>
+        }
+        else
+        {
+            <p class="text-muted">Няма записани участници.</p>
+        }
+    </div>
+
+    <div class="col-md-6">
+        <h5>Добави участник</h5>
+        <form asp-action="AddMember" method="post" class="row g-2">
+            <input type="hidden" name="eventId" value="@Model.Id" />
+            <div class="col-9">
+                <select name="memberId" class="form-select">
+                    @foreach (var m in available)
+                    {
+                        <option value="@m.Id">@m.FullName (@m.Email)</option>
+                    }
+                </select>
+            </div>
+            <div class="col-3">
+                <button class="btn btn-success w-100">Добави</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<hr />
+<a class="btn btn-warning" href="@Url.Action("Edit", new { id = Model.Id })">Редакция</a>
+<a class="btn btn-secondary" href="@Url.Action("Index")">Назад</a>
