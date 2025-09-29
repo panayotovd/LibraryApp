@@ -1,0 +1,17 @@
+﻿@{
+    string? ok = TempData["Success"] as string;
+    string? err = TempData["Error"] as string;
+    string? warn = TempData["Warning"] as string;
+}
+@if (!string.IsNullOrEmpty(ok))
+{
+    <div class="alert alert-success alert-dismissible fade show"><i class="bi bi-check-circle me-1"></i>@ok<button class="btn-close" data-bs-dismiss="alert"></button></div>
+}
+@if (!string.IsNullOrEmpty(err))
+{
+    <div class="alert alert-danger  alert-dismissible fade show"><i class="bi bi-x-circle me-1"></i>@err<button class="btn-close" data-bs-dismiss="alert"></button></div>
+}
+@if (!string.IsNullOrEmpty(warn))
+{
+    <div class="alert alert-warning alert-dismissible fade show"><i class="bi bi-exclamation-triangle me-1"></i>@warn<button class="btn-close" data-bs-dismiss="alert"></button></div>
+}

@@ -11,7 +11,6 @@
     {
         var rvd = new RouteValueDictionary(baseState);
         rvd["id"] = Model.Id;
-        // ако случайно има остатъчни ключове, които биха пречили:
         rvd.Remove("action");
         rvd.Remove("controller");
         return Url.Action(action, Model.Controller, rvd) ?? "#";
@@ -27,14 +26,16 @@
         <i class="bi bi-eye"></i>
         <span class="d-none d-md-inline"> @Model.DetailsText</span>
     </a>
+    @if (User.IsInRole("Admin") || User.IsInRole("Librarian"))
+    {
+        <a class="btn btn-outline-warning" href="@editUrl" title="@Model.EditText">
+            <i class="bi bi-pencil-square"></i>
+            <span class="d-none d-md-inline"> @Model.EditText</span>
+        </a>
 
-    <a class="btn btn-outline-warning" href="@editUrl" title="@Model.EditText">
-        <i class="bi bi-pencil-square"></i>
-        <span class="d-none d-md-inline"> @Model.EditText</span>
-    </a>
-
-    <a class="btn btn-outline-danger" href="@deleteUrl" title="@Model.DeleteText">
-        <i class="bi bi-trash"></i>
-        <span class="d-none d-md-inline"> @Model.DeleteText</span>
-    </a>
+        <a class="btn btn-outline-danger" href="@deleteUrl" title="@Model.DeleteText">
+            <i class="bi bi-trash"></i>
+            <span class="d-none d-md-inline"> @Model.DeleteText</span>
+        </a>
+    }
 </div>

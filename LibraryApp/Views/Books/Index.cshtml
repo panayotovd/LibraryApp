@@ -58,11 +58,16 @@
     </div>
 </form>
 
-<div class="d-flex justify-content-end mb-2">
-    <a class="btn btn-success" href="@Url.Action("Create")">+ Нова книга</a>
-</div>
 
-<table class="table table-striped align-middle">
+@if (User.IsInRole("Admin") || User.IsInRole("Librarian"))
+{
+    <div class="d-flex justify-content-end mb-2">
+        <a class="btn btn-success" href="@Url.Action("Create")">+ Нова книга</a>
+    </div>
+}
+
+
+<table class="table table-hover table-striped align-middle">
     <thead>
         <tr>
             <th>@Html.SortLink("title", "Заглавие", (object)ViewBag.Filters)</th>

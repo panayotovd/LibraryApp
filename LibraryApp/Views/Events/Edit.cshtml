@@ -30,7 +30,7 @@
                     <input class="form-check-input" type="checkbox"
                            name="SelectedMemberIds" value="@m.Id"
                            @(Model.SelectedMemberIds.Contains(m.Id) ? "checked" : "") />
-                    <label class="form-check-label">@m.FullName (@m.Email)</label>
+                    <label class="form-check-label">@m.Name (@m.Email)</label>
                 </div>
             }
         </div>

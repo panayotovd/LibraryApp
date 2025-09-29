@@ -1,14 +1,18 @@
-﻿using LibraryApp.Models;
+﻿using LibraryApp.Data;
+using LibraryApp.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Authorization;
 
 namespace LibraryApp.Controllers
 {
+    [Authorize]
     public class MembersController(LibraryDbContext db) : Controller
     {
         private readonly LibraryDbContext _db = db;
 
         // GET: /Members
+        [AllowAnonymous]
         public async Task<IActionResult> Index(
             string? q,
             string? sort = "name",   // name|email|joined
@@ -23,7 +27,7 @@ namespace LibraryApp.Controllers
             {
                 var pattern = $"%{q}%";
                 query = query.Where(m =>
-                    EF.Functions.Like(m.FullName, pattern) ||
+                    EF.Functions.Like(m.Name, pattern) ||
                     EF.Functions.Like(m.Email, pattern));
             }
 
@@ -33,7 +37,7 @@ namespace LibraryApp.Controllers
             {
                 "email" => asc ? query.OrderBy(m => m.Email) : query.OrderByDescending(m => m.Email),
                 "joined" => asc ? query.OrderBy(m => m.JoinedAt) : query.OrderByDescending(m => m.JoinedAt),
-                _ => asc ? query.OrderBy(m => m.FullName) : query.OrderByDescending(m => m.FullName)
+                _ => asc ? query.OrderBy(m => m.Name) : query.OrderByDescending(m => m.Name)
             };
 
             // Пагинация
@@ -63,6 +67,7 @@ namespace LibraryApp.Controllers
 
 
         // GET: /Members/Details/5
+        [AllowAnonymous]
         public async Task<IActionResult> Details(int? id)
         {
             if (id == null) return NotFound();
@@ -74,11 +79,13 @@ namespace LibraryApp.Controllers
         }
 
         // GET: /Members/Create
+        [Authorize(Policy = "CanWrite")]
         public IActionResult Create() => View();
 
         // POST: /Members/Create
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [Authorize(Policy = "CanWrite")]
         public async Task<IActionResult> Create(Member member)
         {
             if (!ModelState.IsValid) return View(member);
@@ -89,6 +96,7 @@ namespace LibraryApp.Controllers
         }
 
         // GET: /Members/Edit/5
+        [Authorize(Policy = "CanWrite")]
         public async Task<IActionResult> Edit(int? id)
         {
             if (id == null) return NotFound();
@@ -100,6 +108,7 @@ namespace LibraryApp.Controllers
         // POST: /Members/Edit/5
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [Authorize(Policy = "CanWrite")]
         public async Task<IActionResult> Edit(int id, Member member)
         {
             if (id != member.Id) return NotFound();
@@ -119,19 +128,20 @@ namespace LibraryApp.Controllers
         }
 
         // GET: /Members/Delete/5
+        [Authorize(Policy = "CanWrite")]
         public async Task<IActionResult> Delete(int? id)
         {
             if (id == null) return NotFound();
             var member = await _db.Members.FirstOrDefaultAsync(m => m.Id == id);
             if (member == null) return NotFound();
 
-            // по желание: блокирай, ако участва в събитие (лесно е ако имаш навигация Member.EventMembers)
             return View(member);
         }
 
         // POST: /Members/Delete/5
         [HttpPost, ActionName("Delete")]
         [ValidateAntiForgeryToken]
+        [Authorize(Policy = "CanWrite")]
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
             var member = await _db.Members.FindAsync(id);

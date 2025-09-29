@@ -7,11 +7,13 @@ namespace LibraryApp.Models
         public int Id { get; set; }
 
         [Required, StringLength(100)]
-        public string? FullName { get; set; }
+        public string? Name { get; set; }
 
         [EmailAddress, Required]
         public string? Email { get; set; }
 
         public DateTime JoinedAt { get; set; } = DateTime.UtcNow;
+
+        public List<EventMember> EventMembers { get; set; } = [];
     }
 }

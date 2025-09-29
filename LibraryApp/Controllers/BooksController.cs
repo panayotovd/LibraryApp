@@ -1,16 +1,20 @@
-﻿using LibraryApp.Helpers;
+﻿using LibraryApp.Data;
+using LibraryApp.Helpers;
 using LibraryApp.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Authorization;
 
 namespace LibraryApp.Controllers
 {
+    [Authorize]
     public class BooksController(LibraryDbContext db) : Controller
     {
         private readonly LibraryDbContext _db = db;
 
         // GET: /Books
+        [AllowAnonymous]
         public async Task<IActionResult> Index(
             string? q,
             int? authorId,
@@ -80,6 +84,7 @@ namespace LibraryApp.Controllers
         }
 
         // GET: /Books/Details/5
+        [AllowAnonymous]
         public async Task<IActionResult> Details(int? id)
         {
             if (id == null) return NotFound();
@@ -91,6 +96,7 @@ namespace LibraryApp.Controllers
         }
 
         // GET: /Books/Create
+        [Authorize(Policy = "CanWrite")]
         public async Task<IActionResult> Create()
         {
             await PopulateAuthors();
@@ -100,6 +106,7 @@ namespace LibraryApp.Controllers
         // POST: /Books/Create
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [Authorize(Policy = "CanWrite")]
         public async Task<IActionResult> Create(Book book)
         {
             if (!ModelState.IsValid) { await PopulateAuthors(book.AuthorId); return View(book); }
@@ -113,6 +120,7 @@ namespace LibraryApp.Controllers
         }
 
         // GET: /Books/Edit/5
+        [Authorize(Policy = "CanWrite")]
         public async Task<IActionResult> Edit(int? id)
         {
             if (id == null) return NotFound();
@@ -126,6 +134,7 @@ namespace LibraryApp.Controllers
         // POST: /Books/Edit/5
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [Authorize(Policy = "CanWrite")]
         public async Task<IActionResult> Edit(int id, Book book)
         {
             if (id != book.Id) return NotFound();
@@ -139,6 +148,7 @@ namespace LibraryApp.Controllers
         }
 
         // GET: /Books/Delete/5
+        [Authorize(Policy = "CanWrite")]
         public async Task<IActionResult> Delete(int? id)
         {
             if (id == null) return NotFound();
@@ -150,6 +160,7 @@ namespace LibraryApp.Controllers
         // POST: /Books/Delete/5
         [HttpPost, ActionName("Delete")]
         [ValidateAntiForgeryToken]
+        [Authorize(Policy = "CanWrite")]
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
             var book = await _db.Books.FindAsync(id);

@@ -1,17 +1,46 @@
-﻿using LibraryApp.Models;
+﻿using LibraryApp.Data;
+using LibraryApp.Models;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// services
+// DbContext (SQL Server) — взима "DefaultConnection" от appsettings.json
+builder.Services.AddDbContext<LibraryDbContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+// Identity (Users + Roles) върху нашия DbContext
+builder.Services
+    .AddDefaultIdentity<ApplicationUser>(o =>
+    {
+        o.SignIn.RequireConfirmedAccount = false;
+        o.Password.RequiredLength = 6;
+        o.Password.RequireNonAlphanumeric = false;
+        o.Password.RequireUppercase = false;
+    })
+    .AddRoles<IdentityRole>()
+    .AddEntityFrameworkStores<LibraryDbContext>();
+
 builder.Services.AddControllersWithViews();
 
-builder.Services.AddDbContext<LibraryDbContext>(opts =>
-    opts.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+builder.Services.AddAuthorization(o =>
+{
+    o.AddPolicy("CanWrite", p => p.RequireRole("Admin", "Librarian"));
+});
 
 var app = builder.Build();
 
-// middleware
+// Apply pending migrations + seed на роли/админ
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<LibraryDbContext>();
+    if (db.Database.GetPendingMigrations().Any())
+        db.Database.Migrate();
+
+    // ако имаш клас Data/IdentitySeed.cs с RunAsync(scope)
+    await IdentitySeed.RunAsync(scope);
+}
+
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Home/Error");
@@ -23,73 +52,13 @@ app.UseStaticFiles();
 
 app.UseRouting();
 
+app.UseAuthentication();
 app.UseAuthorization();
 
-// маршрути
 app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Home}/{action=Index}/{id?}");
 
-//using (var scope = app.Services.CreateScope())
-//{
-//    var db = scope.ServiceProvider.GetRequiredService<LibraryDbContext>();
-//    if (!db.Authors.Any())
-//    {
-//        var a1 = new Author { Name = "J. R. R. Tolkien" };
-//        var a2 = new Author { Name = "Agatha Christie" };
-//        db.Authors.AddRange(a1, a2);
-//        db.Books.AddRange(
-//            new Book { Title = "The Hobbit", ISBN = "9780547928227", Year = 1937, Author = a1 },
-//            new Book { Title = "Murder on the Orient Express", ISBN = "9780062693662", Year = 1934, Author = a2 }
-//        );
-//        await db.SaveChangesAsync();
-//    }
-//}
+app.MapRazorPages(); // за Identity UI (Login/Register)
 
-//using (var scope = app.Services.CreateScope())
-//{
-//    var db = scope.ServiceProvider.GetRequiredService<LibraryDbContext>();
-//    if (!db.Members.Any())
-//    {
-//        db.Members.AddRange(
-//            new Member { FullName = "Alice Johnson", Email = "alice@example.com" },
-//            new Member { FullName = "Bob Smith", Email = "bob@example.com" },
-//            new Member { FullName = "Carla Brown", Email = "carla@example.com" }
-//        );
-//        await db.SaveChangesAsync();
-//    }
-//}
-
-//using (var scope = app.Services.CreateScope())
-//{
-//    var db = scope.ServiceProvider.GetRequiredService<LibraryDbContext>();
-
-//    // 1) Приложи миграции – създава DB, ако липсва
-//    db.Database.Migrate();
-
-//    // 2) Seed – едва след като има таблици
-//    if (!db.Authors.Any())
-//    {
-//        var a1 = new Author { Name = "J. R. R. Tolkien" };
-//        var a2 = new Author { Name = "Agatha Christie" };
-//        db.Authors.AddRange(a1, a2);
-//        db.Books.AddRange(
-//            new Book { Title = "The Hobbit", ISBN = "9780547928227", Year = 1937, Author = a1 },
-//            new Book { Title = "Murder on the Orient Express", ISBN = "9780062693662", Year = 1934, Author = a2 }
-//        );
-//        await db.SaveChangesAsync();
-//    }
-
-//    if (!db.Members.Any())
-//    {
-//        db.Members.AddRange(
-//            new Member { FullName = "Alice Johnson", Email = "alice@example.com" },
-//            new Member { FullName = "Bob Smith", Email = "bob@example.com" },
-//            new Member { FullName = "Carla Brown", Email = "carla@example.com" }
-//        );
-//        await db.SaveChangesAsync();
-//    }
-//}
-
-// ВАЖНО: без това приложението ще приключи веднага
 app.Run();

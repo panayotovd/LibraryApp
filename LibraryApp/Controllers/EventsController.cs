@@ -1,16 +1,20 @@
-﻿using LibraryApp.Models;
+﻿using LibraryApp.Data;
+using LibraryApp.Models;
 using LibraryApp.Models.ViewModels;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Authorization;
 
 namespace LibraryApp.Controllers
 {
+    [Authorize]
     public class EventsController : Controller
     {
         private readonly LibraryDbContext _db;
         public EventsController(LibraryDbContext db) => _db = db;
 
         // GET: /Events
+        [AllowAnonymous]
         public async Task<IActionResult> Index(
             string? q,
             DateTime? from,
@@ -72,6 +76,7 @@ namespace LibraryApp.Controllers
 
 
         // GET: /Events/Details/5
+        [AllowAnonymous]
         public async Task<IActionResult> Details(int? id)
         {
             if (id is null) return NotFound();
@@ -87,30 +92,32 @@ namespace LibraryApp.Controllers
             var signed = ev.EventMembers.Select(em => em.MemberId).ToHashSet();
             ViewBag.AvailableMembers = await _db.Members
                 .Where(m => !signed.Contains(m.Id))
-                .OrderBy(m => m.FullName)
+                .OrderBy(m => m.Name)
                 .ToListAsync();
 
             return View(ev);
         }
 
         // GET: /Events/Create
+        [Authorize(Policy = "CanWrite")]
         public async Task<IActionResult> Create()
         {
             var vm = new EventFormViewModel
             {
                 StartAt = DateTime.Today.AddDays(1).AddHours(18),
-                AllMembers = await _db.Members.OrderBy(m => m.FullName).ToListAsync()
+                AllMembers = await _db.Members.OrderBy(m => m.Name).ToListAsync()
             };
             return View(vm);
         }
 
         // POST: /Events/Create
         [HttpPost, ValidateAntiForgeryToken]
+        [Authorize(Policy = "CanWrite")]
         public async Task<IActionResult> Create(EventFormViewModel vm)
         {
             if (!ModelState.IsValid)
             {
-                vm.AllMembers = await _db.Members.OrderBy(m => m.FullName).ToListAsync();
+                vm.AllMembers = await _db.Members.OrderBy(m => m.Name).ToListAsync();
                 return View(vm);
             }
 
@@ -131,6 +138,7 @@ namespace LibraryApp.Controllers
         }
 
         // GET: /Events/Edit/5
+        [Authorize(Policy = "CanWrite")]
         public async Task<IActionResult> Edit(int? id)
         {
             if (id is null) return NotFound();
@@ -148,20 +156,21 @@ namespace LibraryApp.Controllers
                 Description = ev.Description,
                 StartAt = ev.StartAt,
                 SelectedMemberIds = ev.EventMembers.Select(em => em.MemberId).ToList(),
-                AllMembers = await _db.Members.OrderBy(m => m.FullName).ToListAsync()
+                AllMembers = await _db.Members.OrderBy(m => m.Name).ToListAsync()
             };
             return View(vm);
         }
 
         // POST: /Events/Edit/5
         [HttpPost, ValidateAntiForgeryToken]
+        [Authorize(Policy = "CanWrite")]
         public async Task<IActionResult> Edit(int id, EventFormViewModel vm)
         {
             if (id != vm.Id) return NotFound();
 
             if (!ModelState.IsValid)
             {
-                vm.AllMembers = await _db.Members.OrderBy(m => m.FullName).ToListAsync();
+                vm.AllMembers = await _db.Members.OrderBy(m => m.Name).ToListAsync();
                 return View(vm);
             }
 
@@ -193,6 +202,7 @@ namespace LibraryApp.Controllers
         }
 
         // GET: /Events/Delete/5
+        [Authorize(Policy = "CanWrite")]
         public async Task<IActionResult> Delete(int? id)
         {
             if (id is null) return NotFound();
@@ -208,6 +218,7 @@ namespace LibraryApp.Controllers
 
         // POST: /Events/Delete/5
         [HttpPost, ActionName("Delete"), ValidateAntiForgeryToken]
+        [Authorize(Policy = "CanWrite")]
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
             var ev = await _db.Events
@@ -225,6 +236,7 @@ namespace LibraryApp.Controllers
 
         // POST: /Events/AddMember
         [HttpPost, ValidateAntiForgeryToken]
+        [Authorize(Policy = "CanWrite")]
         public async Task<IActionResult> AddMember(int eventId, int memberId)
         {
             var exists = await _db.EventMembers.AnyAsync(x => x.EventId == eventId && x.MemberId == memberId);
@@ -238,6 +250,7 @@ namespace LibraryApp.Controllers
 
         // POST: /Events/RemoveMember
         [HttpPost, ValidateAntiForgeryToken]
+        [Authorize(Policy = "CanWrite")]
         public async Task<IActionResult> RemoveMember(int eventId, int memberId)
         {
             var em = await _db.EventMembers.FirstOrDefaultAsync(x => x.EventId == eventId && x.MemberId == memberId);
