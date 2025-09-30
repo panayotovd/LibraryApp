@@ -5,41 +5,29 @@ using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// DbContext (SQL Server) — взима "DefaultConnection" от appsettings.json
+// DbContext
 builder.Services.AddDbContext<LibraryDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// Identity (Users + Roles) върху нашия DbContext
+// Identity
 builder.Services
-    .AddDefaultIdentity<ApplicationUser>(o =>
-    {
-        o.SignIn.RequireConfirmedAccount = false;
-        o.Password.RequiredLength = 6;
-        o.Password.RequireNonAlphanumeric = false;
-        o.Password.RequireUppercase = false;
-    })
+    .AddDefaultIdentity<ApplicationUser>(o => { o.SignIn.RequireConfirmedAccount = false; })
     .AddRoles<IdentityRole>()
     .AddEntityFrameworkStores<LibraryDbContext>();
 
-builder.Services.AddControllersWithViews();
-
-builder.Services.AddAuthorization(o =>
+// Authorization policy: CanWrite = Admin или Librarian
+builder.Services.AddAuthorization(options =>
 {
-    o.AddPolicy("CanWrite", p => p.RequireRole("Admin", "Librarian"));
+    options.AddPolicy("CanWrite", policy => policy.RequireRole("Admin", "Librarian"));
 });
+
+builder.Services.AddControllersWithViews();
+builder.Services.AddRazorPages();
 
 var app = builder.Build();
 
-// Apply pending migrations + seed на роли/админ
-using (var scope = app.Services.CreateScope())
-{
-    var db = scope.ServiceProvider.GetRequiredService<LibraryDbContext>();
-    if (db.Database.GetPendingMigrations().Any())
-        db.Database.Migrate();
-
-    // ако имаш клас Data/IdentitySeed.cs с RunAsync(scope)
-    await IdentitySeed.RunAsync(scope);
-}
+// seed роли и демо админ, ако съществува user admin@library.local
+await EnsureRolesAndAdminAsync(app);
 
 if (!app.Environment.IsDevelopment())
 {
@@ -49,16 +37,34 @@ if (!app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.UseStaticFiles();
-
 app.UseRouting();
-
 app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Home}/{action=Index}/{id?}");
+app.MapRazorPages();
 
-app.MapRazorPages(); // за Identity UI (Login/Register)
+using (var scope = app.Services.CreateScope())
+{
+    await IdentitySeed.RunAsync(scope);
+}
 
 app.Run();
+
+// ===== helpers =====
+static async Task EnsureRolesAndAdminAsync(WebApplication app)
+{
+    using var scope = app.Services.CreateScope();
+    var roles = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
+    var users = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+
+    foreach (var r in new[] { "Admin", "Librarian" })
+        if (!await roles.RoleExistsAsync(r)) await roles.CreateAsync(new IdentityRole(r));
+
+    // ако имаш потребител admin@library.local, сложи му роля Admin
+    var admin = await users.FindByEmailAsync("admin@library.local");
+    if (admin != null && !await users.IsInRoleAsync(admin, "Admin"))
+        await users.AddToRoleAsync(admin, "Admin");
+}

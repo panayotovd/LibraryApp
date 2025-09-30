@@ -1,39 +1,43 @@
-﻿using LibraryApp.Data;
+﻿using System;
+using System.Linq;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Rendering;
+using Microsoft.EntityFrameworkCore;
+using LibraryApp.Data;
 using LibraryApp.Models;
 using LibraryApp.Models.ViewModels;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.AspNetCore.Authorization;
 
 namespace LibraryApp.Controllers
 {
     [Authorize]
+    [Route("Events")]
     public class EventsController : Controller
     {
         private readonly LibraryDbContext _db;
         public EventsController(LibraryDbContext db) => _db = db;
 
-        // GET: /Events
+        // GET /Events
         [AllowAnonymous]
+        [HttpGet("")]
         public async Task<IActionResult> Index(
-            string? q,
-            DateTime? from,
-            DateTime? to,
-            string? sort = "date", // date|title|count
-            string? dir = "asc",
-            int page = 1,
-            int pageSize = 10)
+            string? q, DateTime? from, DateTime? to,
+            string? sort = "start", string? dir = "asc",
+            int page = 1, int pageSize = 10)
         {
             var query = _db.Events
                 .AsNoTracking()
                 .Include(e => e.EventMembers)
+                .ThenInclude(em => em.Member)
                 .AsQueryable();
 
             if (!string.IsNullOrWhiteSpace(q))
             {
-                var pattern = $"%{q}%";
-                query = query.Where(e => EF.Functions.Like(e.Title, pattern) ||
-                                         EF.Functions.Like(e.Description!, pattern));
+                var p = $"%{q}%";
+                query = query.Where(e =>
+                    EF.Functions.Like(e.Title, p) ||
+                    EF.Functions.Like(e.Description!, p));
             }
             if (from.HasValue) query = query.Where(e => e.StartAt >= from.Value);
             if (to.HasValue) query = query.Where(e => e.StartAt <= to.Value);
@@ -42,13 +46,12 @@ namespace LibraryApp.Controllers
             query = (sort?.ToLower()) switch
             {
                 "title" => asc ? query.OrderBy(e => e.Title) : query.OrderByDescending(e => e.Title),
-                "count" => asc ? query.OrderBy(e => e.EventMembers.Count)
-                               : query.OrderByDescending(e => e.EventMembers.Count),
+                "members" => asc ? query.OrderBy(e => e.EventMembers.Count) : query.OrderByDescending(e => e.EventMembers.Count),
                 _ => asc ? query.OrderBy(e => e.StartAt) : query.OrderByDescending(e => e.StartAt)
             };
 
-            if (page < 1) page = 1;
-            if (pageSize < 5) pageSize = 5; if (pageSize > 50) pageSize = 50;
+            page = Math.Max(1, page);
+            pageSize = Math.Clamp(pageSize, 5, 50);
 
             var total = await query.CountAsync();
             var items = await query.Skip((page - 1) * pageSize).Take(pageSize).ToListAsync();
@@ -61,7 +64,7 @@ namespace LibraryApp.Controllers
                 $"sort={sort}", $"dir={dir}", $"pageSize={pageSize}"
             }.Where(s => s != null));
 
-            ViewBag.Pager = new LibraryApp.Models.ViewModels.PagedResult<object>
+            ViewBag.Pager = new PagedResult<object>
             {
                 Page = page,
                 PageSize = pageSize,
@@ -69,197 +72,167 @@ namespace LibraryApp.Controllers
                 QueryString = baseQs
             };
 
-            ViewBag.Filters = new { q, from, to, sort, dir, pageSize };
-
             return View(items);
         }
 
-
-        // GET: /Events/Details/5
+        // GET /Events/Details/5
         [AllowAnonymous]
-        public async Task<IActionResult> Details(int? id)
+        [HttpGet("Details/{id:int}")]
+        public async Task<IActionResult> Details(int id)
         {
-            if (id is null) return NotFound();
-
             var ev = await _db.Events
-                .Include(e => e.EventMembers)
-                    .ThenInclude(em => em.Member)
-                .FirstOrDefaultAsync(e => e.Id == id.Value);
-
+                .Include(e => e.EventMembers).ThenInclude(em => em.Member)
+                .FirstOrDefaultAsync(e => e.Id == id);
             if (ev is null) return NotFound();
 
-            // За dropdown: членове, които още НЕ са записани
-            var signed = ev.EventMembers.Select(em => em.MemberId).ToHashSet();
-            ViewBag.AvailableMembers = await _db.Members
-                .Where(m => !signed.Contains(m.Id))
+            // свободни членове за дропдауна
+            var used = ev.EventMembers.Select(em => em.MemberId).ToHashSet();
+            var free = await _db.Members.AsNoTracking()
+                .Where(m => !used.Contains(m.Id))
+                .OrderBy(m => m.Name)
+                .ToListAsync();
+            ViewBag.Members = new SelectList(free, "Id", "Name");
+
+            return View(ev);
+        }
+
+        // GET /Events/Create
+        [Authorize(Policy = "CanWrite")]
+        [HttpGet("Create")]
+        public IActionResult Create() => View(new Event { StartAt = DateTime.UtcNow });
+
+        // POST /Events/Create
+        [Authorize(Policy = "CanWrite")]
+        [HttpPost("Create")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Create([Bind("Title,Description,StartAt")] Event ev)
+        {
+            if (!ModelState.IsValid) return View(ev);
+            _db.Events.Add(ev);
+            await _db.SaveChangesAsync();
+            TempData["Success"] = "Събитие: създадено.";
+            return RedirectToAction(nameof(Index));
+        }
+
+        // GET /Events/Edit/5
+        [Authorize(Policy = "CanWrite")]
+        [HttpGet("Edit/{id:int}")]
+        public async Task<IActionResult> Edit(int id)
+        {
+            var ev = await _db.Events
+                .Include(e => e.EventMembers).ThenInclude(em => em.Member)
+                .FirstOrDefaultAsync(e => e.Id == id);
+            if (ev is null) return NotFound();
+
+            await PopulateMembersSelect(id); // свободни членове за дропдауна
+            return View(ev);
+        }
+
+        // POST /Events/Edit/5
+        [Authorize(Policy = "CanWrite")]
+        [HttpPost("Edit/{id:int}")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Edit(
+            int id,
+            [Bind("Id,Title,Description,StartAt")] Event ev,
+            [FromForm] string? op,
+            [FromForm] int? memberId)
+        {
+            // добавяне
+            if (op == "add-member")
+            {
+                if (memberId is null || memberId <= 0)
+                {
+                    TempData["Error"] = "Избери участник.";
+                    return RedirectToAction(nameof(Edit), new { id });
+                }
+
+                bool exists = await _db.EventMembers.AnyAsync(x => x.EventId == id && x.MemberId == memberId);
+                if (exists)
+                {
+                    TempData["Error"] = "Този участник вече е добавен.";
+                    return RedirectToAction(nameof(Edit), new { id });
+                }
+
+                _db.EventMembers.Add(new EventMember { EventId = id, MemberId = memberId.Value });
+                await _db.SaveChangesAsync();
+                TempData["Success"] = "Участникът е добавен.";
+                return RedirectToAction(nameof(Edit), new { id });
+            }
+
+            // премахване
+            if (op == "remove-member")
+            {
+                if (memberId is null || memberId <= 0)
+                { TempData["Error"] = "Липсва участник."; return RedirectToAction(nameof(Edit), new { id }); }
+
+                var link = await _db.EventMembers
+                    .FirstOrDefaultAsync(x => x.EventId == id && x.MemberId == memberId);
+                if (link != null)
+                {
+                    _db.EventMembers.Remove(link);
+                    await _db.SaveChangesAsync();
+                    TempData["Success"] = "Участникът е премахнат.";
+                }
+                return RedirectToAction(nameof(Edit), new { id });
+            }
+
+            // нормална редакция
+            if (id != ev.Id) return NotFound();
+            if (!ModelState.IsValid)
+            {
+                await PopulateMembersSelect(id);
+                return View(ev);
+            }
+
+            _db.Entry(ev).State = EntityState.Modified;
+            await _db.SaveChangesAsync();
+            TempData["Success"] = "Събитието е обновено.";
+            return RedirectToAction(nameof(Index));
+        }
+
+        // GET /Events/Delete/5
+        [Authorize(Policy = "CanWrite")]
+        [HttpGet("Delete/{id:int}")]
+        public async Task<IActionResult> Delete(int id)
+        {
+            var ev = await _db.Events.AsNoTracking().FirstOrDefaultAsync(e => e.Id == id);
+            if (ev is null) return NotFound();
+            return View(ev);
+        }
+
+        // POST /Events/Delete/5
+        [Authorize(Policy = "CanWrite")]
+        [HttpPost("Delete/{id:int}")]
+        [ValidateAntiForgeryToken]
+        [ActionName("Delete")]
+        public async Task<IActionResult> DeleteConfirmed(int id)
+        {
+            var ev = await _db.Events.FindAsync(id);
+            if (ev != null)
+            {
+                _db.Events.Remove(ev);
+                await _db.SaveChangesAsync();
+                TempData["Success"] = "Събитие: изтрито.";
+            }
+            return RedirectToAction(nameof(Index));
+        }
+
+        // helpers
+        private async Task PopulateMembersSelect(int eventId)
+        {
+            var usedIds = await _db.EventMembers
+                .Where(em => em.EventId == eventId)
+                .Select(em => em.MemberId)
+                .ToListAsync();
+
+            var members = await _db.Members
+                .AsNoTracking()
+                .Where(m => !usedIds.Contains(m.Id))
                 .OrderBy(m => m.Name)
                 .ToListAsync();
 
-            return View(ev);
-        }
-
-        // GET: /Events/Create
-        [Authorize(Policy = "CanWrite")]
-        public async Task<IActionResult> Create()
-        {
-            var vm = new EventFormViewModel
-            {
-                StartAt = DateTime.Today.AddDays(1).AddHours(18),
-                AllMembers = await _db.Members.OrderBy(m => m.Name).ToListAsync()
-            };
-            return View(vm);
-        }
-
-        // POST: /Events/Create
-        [HttpPost, ValidateAntiForgeryToken]
-        [Authorize(Policy = "CanWrite")]
-        public async Task<IActionResult> Create(EventFormViewModel vm)
-        {
-            if (!ModelState.IsValid)
-            {
-                vm.AllMembers = await _db.Members.OrderBy(m => m.Name).ToListAsync();
-                return View(vm);
-            }
-
-            var ev = new Event
-            {
-                Title = vm.Title,
-                Description = vm.Description,
-                StartAt = vm.StartAt,
-                EventMembers = vm.SelectedMemberIds
-                    .Distinct()
-                    .Select(id => new EventMember { MemberId = id })
-                    .ToList()
-            };
-
-            _db.Events.Add(ev);
-            await _db.SaveChangesAsync();
-            return RedirectToAction(nameof(Index));
-        }
-
-        // GET: /Events/Edit/5
-        [Authorize(Policy = "CanWrite")]
-        public async Task<IActionResult> Edit(int? id)
-        {
-            if (id is null) return NotFound();
-
-            var ev = await _db.Events
-                .Include(e => e.EventMembers)
-                .FirstOrDefaultAsync(e => e.Id == id.Value);
-
-            if (ev is null) return NotFound();
-
-            var vm = new EventFormViewModel
-            {
-                Id = ev.Id,
-                Title = ev.Title,
-                Description = ev.Description,
-                StartAt = ev.StartAt,
-                SelectedMemberIds = ev.EventMembers.Select(em => em.MemberId).ToList(),
-                AllMembers = await _db.Members.OrderBy(m => m.Name).ToListAsync()
-            };
-            return View(vm);
-        }
-
-        // POST: /Events/Edit/5
-        [HttpPost, ValidateAntiForgeryToken]
-        [Authorize(Policy = "CanWrite")]
-        public async Task<IActionResult> Edit(int id, EventFormViewModel vm)
-        {
-            if (id != vm.Id) return NotFound();
-
-            if (!ModelState.IsValid)
-            {
-                vm.AllMembers = await _db.Members.OrderBy(m => m.Name).ToListAsync();
-                return View(vm);
-            }
-
-            var ev = await _db.Events
-                .Include(e => e.EventMembers)
-                .FirstOrDefaultAsync(e => e.Id == id);
-
-            if (ev is null) return NotFound();
-
-            ev.Title = vm.Title;
-            ev.Description = vm.Description;
-            ev.StartAt = vm.StartAt;
-
-            // Sync many-to-many
-            var desired = vm.SelectedMemberIds.Distinct().ToHashSet();
-            var existing = ev.EventMembers.Select(em => em.MemberId).ToHashSet();
-
-            // Remove
-            var remove = ev.EventMembers.Where(em => !desired.Contains(em.MemberId)).ToList();
-            if (remove.Count > 0) _db.EventMembers.RemoveRange(remove);
-
-            // Add
-            var add = desired.Where(mid => !existing.Contains(mid))
-                             .Select(mid => new EventMember { EventId = ev.Id, MemberId = mid });
-            await _db.EventMembers.AddRangeAsync(add);
-
-            await _db.SaveChangesAsync();
-            return RedirectToAction(nameof(Details), new { id = ev.Id });
-        }
-
-        // GET: /Events/Delete/5
-        [Authorize(Policy = "CanWrite")]
-        public async Task<IActionResult> Delete(int? id)
-        {
-            if (id is null) return NotFound();
-
-            var ev = await _db.Events
-                .Include(e => e.EventMembers)
-                    .ThenInclude(em => em.Member)
-                .FirstOrDefaultAsync(e => e.Id == id.Value);
-
-            if (ev is null) return NotFound();
-            return View(ev);
-        }
-
-        // POST: /Events/Delete/5
-        [HttpPost, ActionName("Delete"), ValidateAntiForgeryToken]
-        [Authorize(Policy = "CanWrite")]
-        public async Task<IActionResult> DeleteConfirmed(int id)
-        {
-            var ev = await _db.Events
-                .Include(e => e.EventMembers)
-                .FirstOrDefaultAsync(e => e.Id == id);
-
-            if (ev != null)
-            {
-                _db.EventMembers.RemoveRange(ev.EventMembers);
-                _db.Events.Remove(ev);
-                await _db.SaveChangesAsync();
-            }
-            return RedirectToAction(nameof(Index));
-        }
-
-        // POST: /Events/AddMember
-        [HttpPost, ValidateAntiForgeryToken]
-        [Authorize(Policy = "CanWrite")]
-        public async Task<IActionResult> AddMember(int eventId, int memberId)
-        {
-            var exists = await _db.EventMembers.AnyAsync(x => x.EventId == eventId && x.MemberId == memberId);
-            if (!exists)
-            {
-                _db.EventMembers.Add(new EventMember { EventId = eventId, MemberId = memberId });
-                await _db.SaveChangesAsync();
-            }
-            return RedirectToAction(nameof(Details), new { id = eventId });
-        }
-
-        // POST: /Events/RemoveMember
-        [HttpPost, ValidateAntiForgeryToken]
-        [Authorize(Policy = "CanWrite")]
-        public async Task<IActionResult> RemoveMember(int eventId, int memberId)
-        {
-            var em = await _db.EventMembers.FirstOrDefaultAsync(x => x.EventId == eventId && x.MemberId == memberId);
-            if (em != null)
-            {
-                _db.EventMembers.Remove(em);
-                await _db.SaveChangesAsync();
-            }
-            return RedirectToAction(nameof(Details), new { id = eventId });
+            ViewBag.Members = new SelectList(members, "Id", "Name");
         }
     }
 }

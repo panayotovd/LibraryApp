@@ -2,21 +2,22 @@
 @{
     ViewData["Title"] = "Изтриване";
 }
-<h1>Изтриване</h1>
-<p>Сигурни ли сте, че искате да изтриете тази книга?</p>
-<ul>
-    <li><strong>@Model.Title</strong> от @Model.Author?.Name</li>
-    <li>ISBN: @Model.ISBN</li>
-</ul>
+<h2 class="mb-3 text-danger"><i class="bi bi-trash me-2"></i>Изтриване</h2>
+<div class="alert alert-warning"><i class="bi bi-exclamation-triangle me-1"></i> Сигурни ли сте, че искате да изтриете този запис?</div>
+
+<dl class="row">
+    <dt class="col-sm-3">Заглавие</dt>
+    <dd class="col-sm-9">@Model.Title</dd>
+    <dt class="col-sm-3">Автор</dt>
+    <dd class="col-sm-9">@Model.Author?.Name</dd>
+    <dt class="col-sm-3">Година</dt>
+    <dd class="col-sm-9">@Model.Year</dd>
+</dl>
 
 <form asp-action="Delete" method="post">
     <input type="hidden" asp-for="Id" />
-    @await Html.PartialAsync("_StateHiddenFields")
-    <button class="btn btn-danger">Изтрий</button>
-    <a class="btn btn-secondary" href="@Url.Action("Index")">Откажи</a>
-    <a class="btn btn-secondary"
-       asp-action="Index"
-       asp-all-route-data="@(RouteStateHelper.BuildFromRequest(Context.Request).ToDictionary(kvp => kvp.Key, kvp => kvp.Value?.ToString()))">
-        Назад
-    </a>
+    <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-danger"><i class="bi bi-trash me-1"></i> Изтрий</button>
+        <a asp-action="Index" class="btn btn-outline-secondary">Отказ</a>
+    </div>
 </form>

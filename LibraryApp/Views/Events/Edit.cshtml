@@ -1,47 +1,103 @@
-﻿@model LibraryApp.Models.ViewModels.EventFormViewModel
+﻿@model LibraryApp.Models.Event
 @{
-    ViewData["Title"] = "Редакция на събитие";
+    ViewData["Title"] = "Редакция събитие";
+    var freeMembers = ViewBag.Members as SelectList;
+    bool hasFree = freeMembers != null && freeMembers.Any();
 }
-<h1>Редакция на събитие</h1>
+
+<h2 class="mb-3"><i class="bi bi-pencil-square me-2"></i>Редакция</h2>
 <hr />
-<form asp-action="Edit" method="post" class="row g-3">
+
+<!-- Основни полета -->
+<form asp-action="Edit" asp-route-id="@Model.Id" method="post" class="mb-4">
+    @Html.AntiForgeryToken()
     <input type="hidden" asp-for="Id" />
-    <div class="col-md-7">
+
+    <div asp-validation-summary="ModelOnly" class="text-danger mb-2"></div>
+
+    <div class="mb-3">
         <label asp-for="Title" class="form-label"></label>
         <input asp-for="Title" class="form-control" />
         <span asp-validation-for="Title" class="text-danger"></span>
     </div>
-    <div class="col-md-5">
-        <label asp-for="StartAt" class="form-label">Начало</label>
-        <input asp-for="StartAt" type="datetime-local" class="form-control" />
-        <span asp-validation-for="StartAt" class="text-danger"></span>
-    </div>
-    <div class="col-12">
+
+    <div class="mb-3">
         <label asp-for="Description" class="form-label"></label>
         <textarea asp-for="Description" class="form-control" rows="3"></textarea>
     </div>
 
-    <div class="col-12">
-        <label class="form-label">Участници</label>
-        <div class="border rounded p-2" style="max-height:220px; overflow:auto;">
-            @foreach (var m in Model.AllMembers)
-            {
-                <div class="form-check">
-                    <input class="form-check-input" type="checkbox"
-                           name="SelectedMemberIds" value="@m.Id"
-                           @(Model.SelectedMemberIds.Contains(m.Id) ? "checked" : "") />
-                    <label class="form-check-label">@m.Name (@m.Email)</label>
-                </div>
-            }
-        </div>
+    <div class="mb-3">
+        <label asp-for="StartAt" class="form-label"></label>
+        <input asp-for="StartAt" class="form-control" />
+        <span asp-validation-for="StartAt" class="text-danger"></span>
     </div>
 
-    <div class="col-12">
-        <button class="btn btn-primary">Запази</button>
-        <a class="btn btn-secondary" href="@Url.Action("Details", new { id = Model.Id })">Назад</a>
+    <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-primary">
+            <i class="bi bi-check2-circle me-1"></i> Запази
+        </button>
+        <a asp-action="Index" class="btn btn-outline-secondary">Назад</a>
     </div>
 </form>
 
-@section Scripts {
-    <partial name="_ValidationScriptsPartial" />
+<!-- Добавяне на участник -->
+@if (User.IsInRole("Admin") || User.IsInRole("Librarian"))
+{
+    <h5 class="mt-4">Добави участник</h5>
+
+    @if (!hasFree)
+    {
+        <div class="alert alert-info">Няма свободни членове за добавяне.</div>
+    }
+    else
+    {
+        <form asp-action="Edit" asp-route-id="@Model.Id" method="post" class="row g-2 align-items-end mb-4">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="op" value="add-member" />
+
+            <div class="col-md-6">
+                <label class="form-label" for="memberId">Член</label>
+                <select id="memberId" name="memberId" class="form-select" asp-items="freeMembers">
+                    <option value="">-- избери --</option>
+                </select>
+            </div>
+
+            <div class="col-auto">
+                <button type="submit" class="btn btn-outline-primary">
+                    <i class="bi bi-plus-lg"></i> Добави
+                </button>
+            </div>
+        </form>
+    }
+}
+
+<!-- Списък участници + премахване -->
+<h5 class="mt-2">Участници (@(Model.EventMembers?.Count ?? 0))</h5>
+
+@if (!(Model.EventMembers?.Any() ?? false))
+{
+    <div class="text-muted">Няма участници.</div>
+}
+else
+{
+    <ul class="list-group">
+        @foreach (var em in Model.EventMembers.OrderBy(x => x.Member!.Name))
+        {
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-person me-2"></i>@em.Member?.Name</span>
+
+                @if (User.IsInRole("Admin") || User.IsInRole("Librarian"))
+                {
+                    <form asp-action="Edit" asp-route-id="@Model.Id" method="post" class="mb-0">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="op" value="remove-member" />
+                        <input type="hidden" name="memberId" value="@em.MemberId" />
+                        <button type="submit" class="btn btn-sm btn-outline-danger">
+                            <i class="bi bi-x-lg"></i> Премахни
+                        </button>
+                    </form>
+                }
+            </li>
+        }
+    </ul>
 }

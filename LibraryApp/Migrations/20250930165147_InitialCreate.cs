@@ -209,10 +209,8 @@ namespace LibraryApp.Migrations
                     Id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
                     Title = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: false),
-                    ISBN = table.Column<string>(type: "nvarchar(13)", maxLength: 13, nullable: false),
                     Year = table.Column<int>(type: "int", nullable: false),
-                    AuthorId = table.Column<int>(type: "int", nullable: false),
-                    Summary = table.Column<string>(type: "nvarchar(max)", nullable: true)
+                    AuthorId = table.Column<int>(type: "int", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -275,11 +273,11 @@ namespace LibraryApp.Migrations
 
             migrationBuilder.InsertData(
                 table: "Books",
-                columns: new[] { "Id", "AuthorId", "ISBN", "Summary", "Title", "Year" },
+                columns: new[] { "Id", "AuthorId", "Title", "Year" },
                 values: new object[,]
                 {
-                    { 1, 1, "9780062693662", null, "Murder on the Orient Express", 1934 },
-                    { 2, 2, "9780547928223", null, "The Hobbit", 1937 }
+                    { 1, 1, "Murder on the Orient Express", 1934 },
+                    { 2, 2, "The Hobbit", 1937 }
                 });
 
             migrationBuilder.InsertData(

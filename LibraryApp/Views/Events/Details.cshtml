@@ -1,57 +1,63 @@
 ﻿@model LibraryApp.Models.Event
 @{
-    ViewData["Title"] = "Детайли за събитие";
-    var available = (IEnumerable<LibraryApp.Models.Member>)ViewBag.AvailableMembers ?? Enumerable.Empty<LibraryApp.Models.Member>();
+    ViewData["Title"] = "Детайли";
+    var membersSelect = ViewBag.Members as SelectList;
+    bool hasFree = membersSelect != null && membersSelect.Any();
 }
-<h1>@Model.Title</h1>
-<p class="text-muted">@Model.StartAt.ToString("dd.MM.yyyy HH:mm")</p>
-<p>@Model.Description</p>
+
+<h2 class="mb-3"><i class="bi bi-eye me-2"></i>Детайли</h2>
 <hr />
 
-<div class="row">
-    <div class="col-md-6">
-        <h5>Участници (@(Model.EventMembers?.Count ?? 0))</h5>
-        @if (Model.EventMembers != null && Model.EventMembers.Any())
-        {
-            <ul class="list-group">
-                @foreach (var em in Model.EventMembers.OrderBy(x => x.Member.Name))
-                {
-                    <li class="list-group-item d-flex justify-content-between align-items-center">
-                        <span>@em.Member.Name (@em.Member.Email)</span>
-                        <form asp-action="RemoveMember" method="post" class="m-0">
-                            <input type="hidden" name="eventId" value="@Model.Id" />
-                            <input type="hidden" name="memberId" value="@em.MemberId" />
-                            <button class="btn btn-sm btn-outline-danger">Премахни</button>
-                        </form>
-                    </li>
-                }
-            </ul>
-        }
-        else
-        {
-            <p class="text-muted">Няма записани участници.</p>
-        }
-    </div>
+<dl class="row">
+    <dt class="col-sm-2">Заглавие</dt>
+    <dd class="col-sm-10">@Model.Title</dd>
 
-    <div class="col-md-6">
-        <h5>Добави участник</h5>
-        <form asp-action="AddMember" method="post" class="row g-2">
-            <input type="hidden" name="eventId" value="@Model.Id" />
-            <div class="col-9">
-                <select name="memberId" class="form-select">
-                    @foreach (var m in available)
-                    {
-                        <option value="@m.Id">@m.Name (@m.Email)</option>
-                    }
-                </select>
-            </div>
-            <div class="col-3">
-                <button class="btn btn-success w-100">Добави</button>
-            </div>
-        </form>
+    <dt class="col-sm-2">Начало</dt>
+    <dd class="col-sm-10">@Model.StartAt.ToString("yyyy-MM-dd HH:mm")</dd>
+
+    <dt class="col-sm-2">Описание</dt>
+    <dd class="col-sm-10">@Model.Description</dd>
+</dl>
+
+<h5 class="mt-4">Участници (@(Model.EventMembers?.Count ?? 0))</h5>
+<div class="list-group mb-3">
+@foreach (var em in (Model.EventMembers ?? Enumerable.Empty<LibraryApp.Models.EventMember>())
+                     .OrderBy(x => x.Member!.Name))
+{
+    <div class="list-group-item d-flex align-items-center">
+        <i class="bi bi-person me-2"></i>
+        <span>@em.Member?.Name</span>
     </div>
+}
+@if (!(Model.EventMembers?.Any() ?? false))
+{
+    <div class="list-group-item text-muted">Няма участници.</div>
+}
 </div>
 
-<hr />
-<a class="btn btn-warning" href="@Url.Action("Edit", new { id = Model.Id })">Редакция</a>
-<a class="btn btn-secondary" href="@Url.Action("Index")">Назад</a>
+<h5 class="mt-4">Добави участник</h5>
+@if (!hasFree)
+{
+    <div class="alert alert-info">Няма свободни членове за добавяне.</div>
+}
+else
+{
+    <form asp-action="Edit" asp-route-id="@Model.Id" method="post" class="row g-2 align-items-end">
+        @Html.AntiForgeryToken()
+        <input type="hidden" name="op" value="add-member" />
+        <div class="col-md-6">
+            <label class="form-label" for="memberId">Член</label>
+            <select id="memberId" name="memberId" class="form-select"
+                    asp-items="@(ViewBag.Members as SelectList)">
+                <option value="">-- избери --</option>
+            </select>
+        </div>
+        <div class="col-auto">
+            <button type="submit" class="btn btn-outline-primary">
+                <i class="bi bi-plus-lg"></i> Добави
+            </button>
+        </div>
+    </form>
+}
+
+<a asp-action="Index" class="btn btn-outline-secondary"><i class="bi bi-arrow-left"></i> Назад</a>

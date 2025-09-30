@@ -1,0 +1,25 @@
+﻿@model LibraryApp.Models.Book
+@{
+    var authors = ViewBag.Authors as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
+}
+<div asp-validation-summary="ModelOnly" class="text-danger mb-2"></div>
+
+<div class="mb-3">
+    <label asp-for="Title" class="form-label"></label>
+    <input asp-for="Title" class="form-control" />
+    <span asp-validation-for="Title" class="text-danger"></span>
+</div>
+
+<div class="mb-3">
+    <label asp-for="AuthorId" class="form-label">Автор</label>
+    <select asp-for="AuthorId" asp-items="authors" class="form-select">
+        <option value="">-- избери --</option>
+    </select>
+    <span asp-validation-for="AuthorId" class="text-danger"></span>
+</div>
+
+<div class="mb-3">
+    <label asp-for="Year" class="form-label"></label>
+    <input asp-for="Year" class="form-control" />
+    <span asp-validation-for="Year" class="text-danger"></span>
+</div>

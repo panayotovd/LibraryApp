@@ -1,24 +1,15 @@
 ﻿@model LibraryApp.Models.Member
 @{
-    ViewData["Title"] = "Редакция на член";
+    ViewData["Title"] = "Редакция член";
 }
-<h1>Редакция на член</h1>
+<h2 class="mb-3"><i class="bi bi-pencil-square me-2"></i>Редакция</h2>
 <hr />
-<form asp-action="Edit" method="post" class="row g-3">
+<form asp-action="Edit" method="post">
     <input type="hidden" asp-for="Id" />
-    <div class="col-md-6">
-        <label asp-for="Name" class="form-label"></label>
-        <input asp-for="Name" class="form-control" />
-        <span asp-validation-for="Name" class="text-danger"></span>
-    </div>
-    <div class="col-md-6">
-        <label asp-for="Email" class="form-label"></label>
-        <input asp-for="Email" class="form-control" />
-        <span asp-validation-for="Email" class="text-danger"></span>
-    </div>
-    <div class="col-12">
-        <button class="btn btn-primary">Запази</button>
-        <a class="btn btn-secondary" href="@Url.Action("Index")">Назад</a>
+    <partial name="~/Views/Members/_Form.cshtml" model="Model" />
+    <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-primary"><i class="bi bi-check2-circle me-1"></i> Запази</button>
+        <a asp-action="Index" class="btn btn-outline-secondary">Отказ</a>
     </div>
 </form>
 @section Scripts {

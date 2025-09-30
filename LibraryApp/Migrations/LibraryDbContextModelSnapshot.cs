@@ -131,14 +131,6 @@ namespace LibraryApp.Migrations
                     b.Property<int>("AuthorId")
                         .HasColumnType("int");
 
-                    b.Property<string>("ISBN")
-                        .IsRequired()
-                        .HasMaxLength(13)
-                        .HasColumnType("nvarchar(13)");
-
-                    b.Property<string>("Summary")
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<string>("Title")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -158,7 +150,6 @@ namespace LibraryApp.Migrations
                         {
                             Id = 1,
                             AuthorId = 1,
-                            ISBN = "9780062693662",
                             Title = "Murder on the Orient Express",
                             Year = 1934
                         },
@@ -166,7 +157,6 @@ namespace LibraryApp.Migrations
                         {
                             Id = 2,
                             AuthorId = 2,
-                            ISBN = "9780547928223",
                             Title = "The Hobbit",
                             Year = 1937
                         });

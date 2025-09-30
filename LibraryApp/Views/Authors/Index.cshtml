@@ -1,49 +1,68 @@
 ﻿@model IEnumerable<LibraryApp.Models.Author>
 @{
     ViewData["Title"] = "Автори";
-    var pager = (LibraryApp.Models.ViewModels.PagedResult<object>)ViewBag.Pager;
-    var f = ViewBag.Filters;
+    var q = Context.Request.Query["q"].ToString();
+    var sort = Context.Request.Query["sort"].ToString();
+    var dir = Context.Request.Query["dir"].ToString();
+    string NextDir(string col) => (sort == col && dir == "asc") ? "desc" : "asc";
+    Func<string, string> Icon = col => sort == col ? $"bi bi-caret-{(dir == "asc" ? "up" : "down")}-fill" : "";
 }
+<div class="d-flex align-items-center justify-content-between mb-3">
+    <h2 class="mb-0"><i class="bi bi-people me-2"></i>Автори</h2>
+    @if (User.IsInRole("Admin") || User.IsInRole("Librarian"))
+    {
+        <a class="btn btn-primary" asp-action="Create"><i class="bi bi-plus-lg me-1"></i> Нов автор</a>
+    }
+</div>
 
-<h1 class="mb-3">Автори</h1>
-
-<form method="get" class="row g-2 mb-3 align-items-center">
-    <div class="col-md-6">
-        <input name="q" value="@f.q" class="form-control" placeholder="Търси по име" />
+<form method="get" class="row g-2 align-items-end mb-3">
+    <div class="col-sm-6 col-md-4">
+        <label class="form-label">Търсене</label>
+        <input name="q" value="@q" class="form-control" placeholder="Име на автор">
     </div>
-
-    <div class="col-md-auto">
-        <button class="btn btn-primary">Филтрирай</button>
-        <a class="btn btn-outline-secondary ms-2" href="@Url.Action("Index")">Изчисти</a>
+    <div class="col-auto">
+        <label class="form-label d-block">&nbsp;</label>
+        <button class="btn btn-outline-secondary"><i class="bi bi-search"></i> Търси</button>
+        <a class="btn btn-outline-secondary" asp-action="Index"><i class="bi bi-x"></i> Изчисти</a>
     </div>
 </form>
 
-@if (User.IsInRole("Admin") || User.IsInRole("Librarian"))
+@if (!Model.Any())
 {
-    <div class="d-flex justify-content-end mb-2">
-        <a class="btn btn-success" href="@Url.Action("Create")">+ Нов автор</a>
-    </div>
+    <div class="text-center py-5 border rounded bg-light-subtle"><i class="bi bi-inbox display-6 d-block mb-2"></i><div class="lead">Няма записи</div></div>
 }
-
-<table class="table table-hover table-striped align-middle">
-    <thead>
-        <tr>
-            <th>@Html.SortLink("name", "Име", (object)ViewBag.Filters)</th>
-            <th style="width:150px"></th>
-        </tr>
-    </thead>
-    <tbody>
-        @foreach (var a in Model)
-        {
-            <tr>
-                <td>@a.Name</td>
-                <td class="text-nowrap">
-                    @await Html.PartialAsync("_CrudActions",
-                    new LibraryApp.Models.ViewModels.CrudActionsModel { Controller = "Authors", Id = a.Id })
-                </td>
-            </tr>
-        }
-    </tbody>
-</table>
-
-@await Html.PartialAsync("_Pager", pager)
+else
+{
+    <div class="table-responsive">
+        <table class="table table-hover align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th>
+                        <a asp-action="Index" asp-route-q="@q" asp-route-sort="name" asp-route-dir="@NextDir("name")">
+                            Име <i class="@Icon("name")"></i>
+                        </a>
+                    </th>
+                    <th class="text-end" style="width:1%"></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var a in Model)
+                {
+                    <tr>
+                        <td class="fw-medium">@a.Name</td>
+                        <td class="text-nowrap text-end">
+                            @{
+                                ViewBag.ViewUrl = Url.Action("Details", new { id = a.Id });
+                                ViewBag.EditUrl = Url.Action("Edit", new { id = a.Id });
+                                ViewBag.DeleteUrl = Url.Action("Delete", new { id = a.Id });
+                                ViewBag.ViewText = "Детайли";
+                            }
+                            <partial name="~/Views/Shared/_CrudActions.cshtml" />
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+    <partial name="~/Views/Shared/_Pager.cshtml" model="ViewBag.Pager" />
+}

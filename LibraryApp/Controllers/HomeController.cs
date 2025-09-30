@@ -7,6 +7,7 @@ namespace LibraryApp.Controllers
         public IActionResult Index() => View();
         public IActionResult About() => View();
         public IActionResult Error() => View();
+
         public new IActionResult StatusCode(int code)
         {
             ViewBag.Code = code;

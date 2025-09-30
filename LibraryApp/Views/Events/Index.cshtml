@@ -1,61 +1,83 @@
 ﻿@model IEnumerable<LibraryApp.Models.Event>
 @{
     ViewData["Title"] = "Събития";
-    var pager = (LibraryApp.Models.ViewModels.PagedResult<object>)ViewBag.Pager;
-    var f = ViewBag.Filters;
+    var q = Context.Request.Query["q"].ToString();
+    var from = Context.Request.Query["from"].ToString();
+    var to = Context.Request.Query["to"].ToString();
+    var sort = Context.Request.Query["sort"].ToString();
+    var dir = Context.Request.Query["dir"].ToString();
+    string NextDir(string col) => (sort == col && dir == "asc") ? "desc" : "asc";
+    Func<string, string> Icon = col => sort == col ? $"bi bi-caret-{(dir == "asc" ? "up" : "down")}-fill" : "";
 }
+<div class="d-flex align-items-center justify-content-between mb-3">
+    <h2 class="mb-0"><i class="bi bi-calendar-event me-2"></i>Събития</h2>
+    @if (User.IsInRole("Admin") || User.IsInRole("Librarian"))
+    {
+        <a class="btn btn-primary" asp-action="Create"><i class="bi bi-plus-lg me-1"></i> Ново събитие</a>
+    }
+</div>
 
-<h1 class="mb-3">Събития</h1>
-
-<form method="get" class="row g-2 mb-3 align-items-center">
-    <div class="col-md-4">
-        <input name="q" value="@f.q" class="form-control" placeholder="Търси по заглавие/описание" />
-    </div>
-
-    <div class="col-md-3">
-        <input type="date" name="from" value="@(f.from == null ? "" : ((DateTime)f.from).ToString("yyyy-MM-dd"))" class="form-control" />
-    </div>
-
-    <div class="col-md-3">
-        <input type="date" name="to" value="@(f.to == null ? "" : ((DateTime)f.to).ToString("yyyy-MM-dd"))" class="form-control" />
-    </div>
-
-    <div class="col-md-auto">
-        <button class="btn btn-primary">Филтрирай</button>
-        <a class="btn btn-outline-secondary ms-2" href="@Url.Action("Index")">Изчисти</a>
+<form method="get" class="row g-2 align-items-end mb-3">
+    <div class="col-md-4"><label class="form-label">Търсене</label><input name="q" value="@q" class="form-control" placeholder="Заглавие или описание"></div>
+    <div class="col-md-3"><label class="form-label">От дата</label><input type="date" name="from" value="@from" class="form-control" /></div>
+    <div class="col-md-3"><label class="form-label">До дата</label><input type="date" name="to" value="@to" class="form-control" /></div>
+    <div class="col-auto">
+        <label class="form-label d-block">&nbsp;</label><button class="btn btn-outline-secondary"><i class="bi bi-search"></i> Търси</button>
+        <a class="btn btn-outline-secondary" asp-action="Index"><i class="bi bi-x"></i> Изчисти</a>
     </div>
 </form>
 
-@if (User.IsInRole("Admin") || User.IsInRole("Librarian"))
+@if (!Model.Any())
 {
-    <div class="d-flex justify-content-end mb-2">
-        <a class="btn btn-success" href="@Url.Action("Create")">+ Нова събитие</a>
-    </div>
+    <div class="text-center py-5 border rounded bg-light-subtle"><i class="bi bi-inbox display-6 d-block mb-2"></i><div class="lead">Няма записи</div></div>
 }
-
-<table class="table table-hover table-striped align-middle">
-    <thead>
-        <tr>
-            <th>@Html.SortLink("date", "Дата", (object)ViewBag.Filters)</th>
-            <th>@Html.SortLink("title", "Заглавие", (object)ViewBag.Filters)</th>
-            <th>@Html.SortLink("count", "Участници", (object)ViewBag.Filters)</th>
-            <th style="width:220px"></th>
-        </tr>
-    </thead>
-    <tbody>
-        @foreach (var e in Model)
-        {
-            <tr>
-                <td>@e.StartAt.ToString("dd.MM.yyyy HH:mm")</td>
-                <td>@e.Title</td>
-                <td>@(e.EventMembers?.Count ?? 0)</td>
-                <td class="text-nowrap">
-                    @await Html.PartialAsync("_CrudActions",
-                    new LibraryApp.Models.ViewModels.CrudActionsModel { Controller = "Events", Id = e.Id })
-                </td>
-            </tr>
-        }
-    </tbody>
-</table>
-
-@await Html.PartialAsync("_Pager", pager)
+else
+{
+    <div class="table-responsive">
+        <table class="table table-hover align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th>
+                        <a asp-action="Index" asp-route-q="@q" asp-route-from="@from" asp-route-to="@to"
+                           asp-route-sort="title" asp-route-dir="@NextDir("title")">
+                            Заглавие <i class="@Icon("title")"></i>
+                        </a>
+                    </th>
+                    <th>
+                        <a asp-action="Index" asp-route-q="@q" asp-route-from="@from" asp-route-to="@to"
+                           asp-route-sort="start" asp-route-dir="@NextDir("start")">
+                            Начало <i class="@Icon("start")"></i>
+                        </a>
+                    </th>
+                    <th class="text-nowrap">
+                        <a asp-action="Index" asp-route-q="@q" asp-route-from="@from" asp-route-to="@to"
+                           asp-route-sort="members" asp-route-dir="@NextDir("members")">
+                            Участници <i class="@Icon("members")"></i>
+                        </a>
+                    </th>
+                    <th class="text-end" style="width:1%"></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var e in Model)
+                {
+                    <tr>
+                        <td class="fw-medium">@e.Title</td>
+                        <td>@e.StartAt.ToString("yyyy-MM-dd HH:mm")</td>
+                        <td>@(e.EventMembers?.Count ?? 0)</td>
+                        <td class="text-nowrap text-end">
+                            @{
+                                ViewBag.ViewUrl = Url.Action("Details", new { id = e.Id });
+                                ViewBag.EditUrl = Url.Action("Edit", new { id = e.Id });
+                                ViewBag.DeleteUrl = Url.Action("Delete", new { id = e.Id });
+                                ViewBag.ViewText = "Детайли";
+                            }
+                            <partial name="~/Views/Shared/_CrudActions.cshtml" />
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+    <partial name="~/Views/Shared/_Pager.cshtml" model="ViewBag.Pager" />
+}

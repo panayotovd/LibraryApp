@@ -1,41 +1,47 @@
-﻿@model LibraryApp.Models.ViewModels.CrudActionsModel
-@using LibraryApp.Helpers
-@using Microsoft.AspNetCore.Routing
+﻿@* Views/Shared/_CrudActions.cshtml
+   Унифицирани CRUD бутони с Bootstrap 5 + Bootstrap Icons.
+   Очаква URL-и през ViewBag:
+     ViewBag.ViewUrl    (задължителен)
+     ViewBag.EditUrl    (по избор; показва се при роли Admin/Librarian)
+     ViewBag.DeleteUrl  (по избор; показва се при роли Admin/Librarian)
+   Текстове по избор:
+     ViewBag.ViewText / EditText / DeleteText
+*@
 
 @{
-    // 1) Вземаме текущите филтри/страница като RouteValueDictionary
-    var baseState = RouteStateHelper.BuildFromRequest(Context.Request);
+    string? viewUrl = ViewBag.ViewUrl as string;
+    string? editUrl = ViewBag.EditUrl as string;
+    string? deleteUrl = ViewBag.DeleteUrl as string;
 
-    // 2) Helper за строене на URL: копира state и добавя id
-    string Link(string action)
-    {
-        var rvd = new RouteValueDictionary(baseState);
-        rvd["id"] = Model.Id;
-        rvd.Remove("action");
-        rvd.Remove("controller");
-        return Url.Action(action, Model.Controller, rvd) ?? "#";
-    }
+    string viewText = (ViewBag.ViewText as string) ?? "Детайли";
+    string editText = (ViewBag.EditText as string) ?? "Редакция";
+    string deleteText = (ViewBag.DeleteText as string) ?? "Изтриване";
 
-    var detailsUrl = Link("Details");
-    var editUrl = Link("Edit");
-    var deleteUrl = Link("Delete");
+    bool canWrite = User.IsInRole("Admin") || User.IsInRole("Librarian");
 }
 
-<div class="btn-group btn-group-sm" role="group" aria-label="Действия">
-    <a class="btn btn-outline-primary" href="@detailsUrl" title="@Model.DetailsText">
-        <i class="bi bi-eye"></i>
-        <span class="d-none d-md-inline"> @Model.DetailsText</span>
-    </a>
-    @if (User.IsInRole("Admin") || User.IsInRole("Librarian"))
+<div class="btn-group btn-group-sm form-actions" role="group" aria-label="CRUD действия">
+    @if (!string.IsNullOrWhiteSpace(viewUrl))
     {
-        <a class="btn btn-outline-warning" href="@editUrl" title="@Model.EditText">
-            <i class="bi bi-pencil-square"></i>
-            <span class="d-none d-md-inline"> @Model.EditText</span>
+        <a class="btn btn-outline-primary" href="@viewUrl" title="@viewText">
+            <i class="bi bi-eye"></i>
+            <span class="d-none d-md-inline"> @viewText</span>
         </a>
+    }
 
-        <a class="btn btn-outline-danger" href="@deleteUrl" title="@Model.DeleteText">
+    @if (canWrite && !string.IsNullOrWhiteSpace(editUrl))
+    {
+        <a class="btn btn-outline-warning" href="@editUrl" title="@editText">
+            <i class="bi bi-pencil-square"></i>
+            <span class="d-none d-md-inline"> @editText</span>
+        </a>
+    }
+
+    @if (canWrite && !string.IsNullOrWhiteSpace(deleteUrl))
+    {
+        <a class="btn btn-outline-danger" href="@deleteUrl" title="@deleteText">
             <i class="bi bi-trash"></i>
-            <span class="d-none d-md-inline"> @Model.DeleteText</span>
+            <span class="d-none d-md-inline"> @deleteText</span>
         </a>
     }
 </div>

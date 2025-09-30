@@ -1,155 +1,107 @@
-﻿using LibraryApp.Data;
-using LibraryApp.Models;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.AspNetCore.Authorization;
+using LibraryApp.Data;
+using LibraryApp.Models;
+using LibraryApp.Models.ViewModels;
 
 namespace LibraryApp.Controllers
 {
     [Authorize]
-    public class MembersController(LibraryDbContext db) : Controller
+    public class MembersController : Controller
     {
-        private readonly LibraryDbContext _db = db;
+        private readonly LibraryDbContext _db;
+        public MembersController(LibraryDbContext db) => _db = db;
 
-        // GET: /Members
         [AllowAnonymous]
-        public async Task<IActionResult> Index(
-            string? q,
-            string? sort = "name",   // name|email|joined
-            string? dir = "asc",
-            int page = 1,
-            int pageSize = 10)
+        public async Task<IActionResult> Index(string? q, string? sort = "name", string? dir = "asc", int page = 1, int pageSize = 10)
         {
             var query = _db.Members.AsNoTracking().AsQueryable();
 
-            // Търсене по име или email
             if (!string.IsNullOrWhiteSpace(q))
             {
-                var pattern = $"%{q}%";
-                query = query.Where(m =>
-                    EF.Functions.Like(m.Name, pattern) ||
-                    EF.Functions.Like(m.Email, pattern));
+                var p = $"%{q}%";
+                query = query.Where(m => EF.Functions.Like(m.Name, p) || EF.Functions.Like(m.Email, p));
             }
 
-            // Сортиране
             bool asc = string.Equals(dir, "asc", StringComparison.OrdinalIgnoreCase);
             query = (sort?.ToLower()) switch
             {
                 "email" => asc ? query.OrderBy(m => m.Email) : query.OrderByDescending(m => m.Email),
                 "joined" => asc ? query.OrderBy(m => m.JoinedAt) : query.OrderByDescending(m => m.JoinedAt),
-                _ => asc ? query.OrderBy(m => m.Name) : query.OrderByDescending(m => m.Name)
+                "name" => asc ? query.OrderBy(m => m.Name) : query.OrderByDescending(m => m.Name),
+                _ => asc ? query.OrderBy(m => m.Id) : query.OrderByDescending(m => m.Id)
             };
 
-            // Пагинация
-            if (page < 1) page = 1;
-            if (pageSize < 5) pageSize = 5; if (pageSize > 50) pageSize = 50;
+            page = Math.Max(1, page);
+            pageSize = Math.Clamp(pageSize, 5, 50);
 
             var total = await query.CountAsync();
             var items = await query.Skip((page - 1) * pageSize).Take(pageSize).ToListAsync();
 
-            string baseQs = "?" + string.Join("&", new[]
-            {
-                q is null ? null : $"q={Uri.EscapeDataString(q)}",
-                $"sort={sort}", $"dir={dir}", $"pageSize={pageSize}"
-            }.Where(s => s != null));
-
-            ViewBag.Pager = new LibraryApp.Models.ViewModels.PagedResult<object>
-            {
-                Page = page,
-                PageSize = pageSize,
-                TotalItems = total,
-                QueryString = baseQs
-            };
-            ViewBag.Filters = new { q, sort, dir, pageSize };
-
+            ViewBag.Pager = new PagedResult<object> { Page = page, PageSize = pageSize, TotalItems = total, QueryString = $"?q={q}&sort={sort}&dir={dir}&pageSize={pageSize}" };
             return View(items);
         }
 
-
-        // GET: /Members/Details/5
         [AllowAnonymous]
         public async Task<IActionResult> Details(int? id)
         {
-            if (id == null) return NotFound();
-
-            // по желание можеш да Include-неш участията в събития
+            if (id is null) return NotFound();
             var member = await _db.Members.FirstOrDefaultAsync(m => m.Id == id);
-            if (member == null) return NotFound();
+            if (member is null) return NotFound();
             return View(member);
         }
 
-        // GET: /Members/Create
         [Authorize(Policy = "CanWrite")]
-        public IActionResult Create() => View();
+        public IActionResult Create() => View(new Member { JoinedAt = DateTime.UtcNow });
 
-        // POST: /Members/Create
-        [HttpPost]
-        [ValidateAntiForgeryToken]
+        [HttpPost, ValidateAntiForgeryToken]
         [Authorize(Policy = "CanWrite")]
-        public async Task<IActionResult> Create(Member member)
+        public async Task<IActionResult> Create([Bind("Name,Email,JoinedAt")] Member member)
         {
             if (!ModelState.IsValid) return View(member);
-
             _db.Members.Add(member);
             await _db.SaveChangesAsync();
+            TempData["Success"] = "Член: създаден.";
             return RedirectToAction(nameof(Index));
         }
 
-        // GET: /Members/Edit/5
         [Authorize(Policy = "CanWrite")]
         public async Task<IActionResult> Edit(int? id)
         {
-            if (id == null) return NotFound();
-            var member = await _db.Members.FindAsync(id);
-            if (member == null) return NotFound();
+            if (id is null) return NotFound();
+            var member = await _db.Members.FindAsync(id.Value);
+            if (member is null) return NotFound();
             return View(member);
         }
 
-        // POST: /Members/Edit/5
-        [HttpPost]
-        [ValidateAntiForgeryToken]
+        [HttpPost, ValidateAntiForgeryToken]
         [Authorize(Policy = "CanWrite")]
-        public async Task<IActionResult> Edit(int id, Member member)
+        public async Task<IActionResult> Edit(int id, [Bind("Id,Name,Email,JoinedAt")] Member member)
         {
             if (id != member.Id) return NotFound();
             if (!ModelState.IsValid) return View(member);
-
-            try
-            {
-                _db.Update(member);
-                await _db.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!await _db.Members.AnyAsync(m => m.Id == id)) return NotFound();
-                throw;
-            }
+            _db.Entry(member).State = EntityState.Modified;
+            await _db.SaveChangesAsync();
+            TempData["Success"] = "Член: обновен.";
             return RedirectToAction(nameof(Index));
         }
 
-        // GET: /Members/Delete/5
         [Authorize(Policy = "CanWrite")]
         public async Task<IActionResult> Delete(int? id)
         {
-            if (id == null) return NotFound();
+            if (id is null) return NotFound();
             var member = await _db.Members.FirstOrDefaultAsync(m => m.Id == id);
-            if (member == null) return NotFound();
-
+            if (member is null) return NotFound();
             return View(member);
         }
 
-        // POST: /Members/Delete/5
-        [HttpPost, ActionName("Delete")]
-        [ValidateAntiForgeryToken]
+        [HttpPost, ActionName("Delete"), ValidateAntiForgeryToken]
         [Authorize(Policy = "CanWrite")]
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
             var member = await _db.Members.FindAsync(id);
-            if (member != null)
-            {
-                _db.Members.Remove(member);
-                await _db.SaveChangesAsync();
-            }
+            if (member != null) { _db.Members.Remove(member); await _db.SaveChangesAsync(); TempData["Success"] = "Член: изтрит."; }
             return RedirectToAction(nameof(Index));
         }
     }

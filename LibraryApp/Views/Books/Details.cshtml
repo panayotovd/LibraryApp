@@ -2,25 +2,22 @@
 @{
     ViewData["Title"] = "Детайли";
 }
-<h1>@Model.Title</h1>
+<div class="d-flex align-items-center justify-content-between mb-3">
+    <h2 class="mb-0"><i class="bi bi-eye me-2"></i>Детайли</h2>
+    <div>
+        @{
+            ViewBag.ViewText = "Детайли";
+        }
+        <partial name="~/Views/Shared/_CrudActions.cshtml" />
+    </div>
+</div>
 <hr />
 <dl class="row">
-    <dt class="col-sm-2">Автор</dt>
-    <dd class="col-sm-10">@Model.Author?.Name</dd>
-
-    <dt class="col-sm-2">ISBN</dt>
-    <dd class="col-sm-10">@Model.ISBN</dd>
-
-    <dt class="col-sm-2">Година</dt>
-    <dd class="col-sm-10">@Model.Year</dd>
-
-    <dt class="col-sm-2">Описание</dt>
-    <dd class="col-sm-10">@Model.Summary</dd>
+    <dt class="col-sm-3">Заглавие</dt>
+    <dd class="col-sm-9">@Model.Title</dd>
+    <dt class="col-sm-3">Автор</dt>
+    <dd class="col-sm-9">@Model.Author?.Name</dd>
+    <dt class="col-sm-3">Година</dt>
+    <dd class="col-sm-9">@Model.Year</dd>
 </dl>
-<a class="btn btn-warning" href="@Url.Action("Edit", new { id = Model.Id })">Редакция</a>
-<a class="btn btn-secondary"
-   asp-action="Index"
-   asp-all-route-data="@(RouteStateHelper.BuildFromRequest(Context.Request).ToDictionary(kvp => kvp.Key, kvp => kvp.Value?.ToString()))">
-    Назад
-</a>
-
+<a asp-action="Index" class="btn btn-outline-secondary"><i class="bi bi-arrow-left"></i> Назад</a>

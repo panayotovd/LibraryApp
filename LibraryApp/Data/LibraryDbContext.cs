@@ -40,8 +40,8 @@ namespace LibraryApp.Data
             );
 
             b.Entity<Book>().HasData(
-                new Book { Id = 1, Title = "Murder on the Orient Express", ISBN = "9780062693662", Year = 1934, AuthorId = 1 },
-                new Book { Id = 2, Title = "The Hobbit", ISBN = "9780547928223", Year = 1937, AuthorId = 2 }
+                new Book { Id = 1, Title = "Murder on the Orient Express", Year = 1934, AuthorId = 1 },
+                new Book { Id = 2, Title = "The Hobbit", Year = 1937, AuthorId = 2 }
             );
 
             b.Entity<Member>().HasData(

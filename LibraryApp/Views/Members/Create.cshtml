@@ -2,22 +2,13 @@
 @{
     ViewData["Title"] = "Нов член";
 }
-<h1>Нов член</h1>
+<h2 class="mb-3"><i class="bi bi-plus-lg me-2"></i>Нов член</h2>
 <hr />
-<form asp-action="Create" method="post" class="row g-3">
-    <div class="col-md-6">
-        <label asp-for="Name" class="form-label"></label>
-        <input asp-for="Name" class="form-control" />
-        <span asp-validation-for="Name" class="text-danger"></span>
-    </div>
-    <div class="col-md-6">
-        <label asp-for="Email" class="form-label"></label>
-        <input asp-for="Email" class="form-control" />
-        <span asp-validation-for="Email" class="text-danger"></span>
-    </div>
-    <div class="col-12">
-        <button class="btn btn-success">Запази</button>
-        <a class="btn btn-secondary" href="@Url.Action("Index")">Назад</a>
+<form asp-action="Create" method="post">
+    <partial name="~/Views/Members/_Form.cshtml" model="Model" />
+    <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-primary"><i class="bi bi-check2-circle me-1"></i> Запази</button>
+        <a asp-action="Index" class="btn btn-outline-secondary">Отказ</a>
     </div>
 </form>
 @section Scripts {

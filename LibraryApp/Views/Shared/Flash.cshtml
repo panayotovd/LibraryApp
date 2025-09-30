@@ -1,17 +1,38 @@
-﻿@{
-    string? ok = TempData["Success"] as string;
-    string? err = TempData["Error"] as string;
-    string? warn = TempData["Warning"] as string;
+﻿@* Views/Shared/Flash.cshtml *@
+@{
+    var ok = TempData["Success"] as string;
+    var err = TempData["Error"] as string;
+    var warn = TempData["Warning"] as string;
+    var info = TempData["Info"] as string;
 }
-@if (!string.IsNullOrEmpty(ok))
-{
-    <div class="alert alert-success alert-dismissible fade show"><i class="bi bi-check-circle me-1"></i>@ok<button class="btn-close" data-bs-dismiss="alert"></button></div>
-}
-@if (!string.IsNullOrEmpty(err))
-{
-    <div class="alert alert-danger  alert-dismissible fade show"><i class="bi bi-x-circle me-1"></i>@err<button class="btn-close" data-bs-dismiss="alert"></button></div>
-}
-@if (!string.IsNullOrEmpty(warn))
-{
-    <div class="alert alert-warning alert-dismissible fade show"><i class="bi bi-exclamation-triangle me-1"></i>@warn<button class="btn-close" data-bs-dismiss="alert"></button></div>
-}
+
+<div aria-live="polite" aria-atomic="true">
+    @if (!string.IsNullOrWhiteSpace(ok))
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="bi bi-check-circle me-1"></i>@ok
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Затвори"></button>
+        </div>
+    }
+    @if (!string.IsNullOrWhiteSpace(err))
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="bi bi-exclamation-octagon me-1"></i>@err
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Затвори"></button>
+        </div>
+    }
+    @if (!string.IsNullOrWhiteSpace(warn))
+    {
+        <div class="alert alert-warning alert-dismissible fade show" role="alert">
+            <i class="bi bi-exclamation-triangle me-1"></i>@warn
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Затвори"></button>
+        </div>
+    }
+    @if (!string.IsNullOrWhiteSpace(info))
+    {
+        <div class="alert alert-info alert-dismissible fade show" role="alert">
+            <i class="bi bi-info-circle me-1"></i>@info
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Затвори"></button>
+        </div>
+    }
+</div>

@@ -1,66 +1,53 @@
-﻿using LibraryApp.Data;
-using LibraryApp.Helpers;
-using LibraryApp.Models;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.AspNetCore.Authorization;
+using LibraryApp.Data;
+using LibraryApp.Models;
+using LibraryApp.Models.ViewModels;
 
 namespace LibraryApp.Controllers
 {
     [Authorize]
-    public class BooksController(LibraryDbContext db) : Controller
+    public class BooksController : Controller
     {
-        private readonly LibraryDbContext _db = db;
+        private readonly LibraryDbContext _db;
+        public BooksController(LibraryDbContext db) => _db = db;
 
-        // GET: /Books
         [AllowAnonymous]
         public async Task<IActionResult> Index(
-            string? q,
-            int? authorId,
-            int? yearFrom,
-            int? yearTo,
-            string? sort = "title",   // title|year|author
-            string? dir = "asc",      // asc|desc
-            int page = 1,
-            int pageSize = 10)
+            string? q, int? authorId, int? yearFrom, int? yearTo,
+            string? sort = "title", string? dir = "asc",
+            int page = 1, int pageSize = 10)
         {
-            var query = _db.Books.Include(b => b.Author).AsQueryable();
+            var query = _db.Books.AsNoTracking().Include(b => b.Author).AsQueryable();
 
-            // Търсене
             if (!string.IsNullOrWhiteSpace(q))
             {
-                var pattern = $"%{q}%";
-                query = query.Where(b =>
-                    EF.Functions.Like(b.Title, pattern) ||
-                    EF.Functions.Like(b.ISBN, pattern) ||
-                    EF.Functions.Like(b.Author.Name, pattern));
+                var p = $"%{q}%";
+                query = query.Where(b => EF.Functions.Like(b.Title, p) || EF.Functions.Like(b.Author!.Name, p));
             }
+            if (authorId.HasValue) query = query.Where(b => b.AuthorId == authorId);
+            if (yearFrom.HasValue) query = query.Where(b => b.Year >= yearFrom);
+            if (yearTo.HasValue) query = query.Where(b => b.Year <= yearTo);
 
-            if (authorId.HasValue) query = query.Where(b => b.AuthorId == authorId.Value);
-            if (yearFrom.HasValue) query = query.Where(b => b.Year >= yearFrom.Value);
-            if (yearTo.HasValue) query = query.Where(b => b.Year <= yearTo.Value);
-
-            // Сортиране
             bool asc = string.Equals(dir, "asc", StringComparison.OrdinalIgnoreCase);
             query = (sort?.ToLower()) switch
             {
                 "year" => asc ? query.OrderBy(b => b.Year) : query.OrderByDescending(b => b.Year),
-                "author" => asc ? query.OrderBy(b => b.Author.Name).ThenBy(b => b.Title)
-                                : query.OrderByDescending(b => b.Author.Name).ThenByDescending(b => b.Title),
+                "author" => asc ? query.OrderBy(b => b.Author!.Name).ThenBy(b => b.Title)
+                                : query.OrderByDescending(b => b.Author!.Name).ThenByDescending(b => b.Title),
                 _ => asc ? query.OrderBy(b => b.Title) : query.OrderByDescending(b => b.Title)
             };
 
-            // Пагинация
-            if (page < 1) page = 1;
-            if (pageSize < 5) pageSize = 5; if (pageSize > 50) pageSize = 50;
+            page = Math.Max(1, page);
+            pageSize = Math.Clamp(pageSize, 5, 50);
 
             var total = await query.CountAsync();
             var items = await query.Skip((page - 1) * pageSize).Take(pageSize).ToListAsync();
 
             ViewBag.Authors = new SelectList(await _db.Authors.OrderBy(a => a.Name).ToListAsync(), "Id", "Name", authorId);
 
-            // Изграждаме QS без page, за да работи pager-ът
             string baseQs = "?" + string.Join("&", new[]
             {
                 q is null ? null : $"q={Uri.EscapeDataString(q)}",
@@ -70,109 +57,80 @@ namespace LibraryApp.Controllers
                 $"sort={sort}", $"dir={dir}", $"pageSize={pageSize}"
             }.Where(s => s != null));
 
-            ViewBag.Pager = new LibraryApp.Models.ViewModels.PagedResult<object>
-            {
-                Page = page,
-                PageSize = pageSize,
-                TotalItems = total,
-                QueryString = baseQs
-            };
-
-            ViewBag.Filters = new { q, authorId, yearFrom, yearTo, sort, dir, pageSize };
-
+            ViewBag.Pager = new PagedResult<object> { Page = page, PageSize = pageSize, TotalItems = total, QueryString = baseQs };
             return View(items);
         }
 
-        // GET: /Books/Details/5
         [AllowAnonymous]
         public async Task<IActionResult> Details(int? id)
         {
-            if (id == null) return NotFound();
-
+            if (id is null) return NotFound();
             var book = await _db.Books.Include(b => b.Author).FirstOrDefaultAsync(m => m.Id == id);
-            if (book == null) return NotFound();
-
+            if (book is null) return NotFound();
             return View(book);
         }
 
-        // GET: /Books/Create
         [Authorize(Policy = "CanWrite")]
         public async Task<IActionResult> Create()
         {
             await PopulateAuthors();
-            return View();
+            return View(new Book());
         }
 
-        // POST: /Books/Create
-        [HttpPost]
-        [ValidateAntiForgeryToken]
+        [HttpPost, ValidateAntiForgeryToken]
         [Authorize(Policy = "CanWrite")]
-        public async Task<IActionResult> Create(Book book)
+        public async Task<IActionResult> Create([Bind("Title,AuthorId,Year")] Book book)
         {
             if (!ModelState.IsValid) { await PopulateAuthors(book.AuthorId); return View(book); }
-
-            _db.Add(book);
+            _db.Books.Add(book);
             await _db.SaveChangesAsync();
-
-            // PRG + пазим филтрите
-            var route = RouteStateHelper.BuildFromRequest(Request);
-            return RedirectToAction(nameof(Index), route);
+            TempData["Success"] = "Книга: успешно създадено.";
+            return RedirectToAction(nameof(Index));
         }
 
-        // GET: /Books/Edit/5
         [Authorize(Policy = "CanWrite")]
         public async Task<IActionResult> Edit(int? id)
         {
-            if (id == null) return NotFound();
-            var book = await _db.Books.FindAsync(id);
-            if (book == null) return NotFound();
-
+            if (id is null) return NotFound();
+            var book = await _db.Books.FindAsync(id.Value);
+            if (book is null) return NotFound();
             await PopulateAuthors(book.AuthorId);
             return View(book);
         }
 
-        // POST: /Books/Edit/5
-        [HttpPost]
-        [ValidateAntiForgeryToken]
+        [HttpPost, ValidateAntiForgeryToken]
         [Authorize(Policy = "CanWrite")]
-        public async Task<IActionResult> Edit(int id, Book book)
+        public async Task<IActionResult> Edit(int id, [Bind("Id,Title,AuthorId,Year")] Book book)
         {
             if (id != book.Id) return NotFound();
             if (!ModelState.IsValid) { await PopulateAuthors(book.AuthorId); return View(book); }
-
-            _db.Update(book);
+            _db.Entry(book).State = EntityState.Modified;
             await _db.SaveChangesAsync();
-
-            var route = RouteStateHelper.BuildFromRequest(Request);
-            return RedirectToAction(nameof(Index), route);
+            TempData["Success"] = "Книга: обновено.";
+            return RedirectToAction(nameof(Index));
         }
 
-        // GET: /Books/Delete/5
         [Authorize(Policy = "CanWrite")]
         public async Task<IActionResult> Delete(int? id)
         {
-            if (id == null) return NotFound();
+            if (id is null) return NotFound();
             var book = await _db.Books.Include(b => b.Author).FirstOrDefaultAsync(m => m.Id == id);
-            if (book == null) return NotFound();
+            if (book is null) return NotFound();
             return View(book);
         }
 
-        // POST: /Books/Delete/5
-        [HttpPost, ActionName("Delete")]
-        [ValidateAntiForgeryToken]
+        [HttpPost, ActionName("Delete"), ValidateAntiForgeryToken]
         [Authorize(Policy = "CanWrite")]
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
             var book = await _db.Books.FindAsync(id);
-            if (book != null) { _db.Books.Remove(book); await _db.SaveChangesAsync(); }
-
-            var route = RouteStateHelper.BuildFromRequest(Request);
-            return RedirectToAction(nameof(Index), route);
+            if (book != null) { _db.Books.Remove(book); await _db.SaveChangesAsync(); TempData["Success"] = "Книга: изтрито."; }
+            return RedirectToAction(nameof(Index));
         }
 
         private async Task PopulateAuthors(int? selectedId = null)
         {
-            var authors = await _db.Authors.OrderBy(a => a.Name).ToListAsync();
+            var authors = await _db.Authors.AsNoTracking().OrderBy(a => a.Name).ToListAsync();
             ViewBag.Authors = new SelectList(authors, "Id", "Name", selectedId);
         }
     }

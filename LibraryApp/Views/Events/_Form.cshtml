@@ -1,0 +1,32 @@
+﻿@model LibraryApp.Models.ViewModels.EventFormViewModel
+
+<div asp-validation-summary="ModelOnly" class="text-danger mb-2"></div>
+
+<div class="mb-3">
+    <label asp-for="Title" class="form-label"></label>
+    <input asp-for="Title" class="form-control" />
+    <span asp-validation-for="Title" class="text-danger"></span>
+</div>
+
+<div class="mb-3">
+    <label asp-for="Description" class="form-label"></label>
+    <textarea asp-for="Description" class="form-control" rows="3"></textarea>
+    <span asp-validation-for="Description" class="text-danger"></span>
+</div>
+
+<div class="mb-3">
+    <label asp-for="StartAt" class="form-label"></label>
+    <input asp-for="StartAt" class="form-control" />
+    <span asp-validation-for="StartAt" class="text-danger"></span>
+</div>
+
+<div class="mb-3">
+    <label class="form-label">Участници</label>
+    <select asp-for="SelectedMemberIds"
+            class="form-select"
+            multiple
+            size="8"
+            asp-items="@(new Microsoft.AspNetCore.Mvc.Rendering.MultiSelectList(Model.AllMembers, "Id", "Name", Model.SelectedMemberIds))">
+    </select>
+    <div class="form-text">Задръж Ctrl/Cmd за множествен избор.</div>
+</div>

@@ -1,99 +1,106 @@
-﻿@using Microsoft.AspNetCore.Html
+﻿@model IEnumerable<LibraryApp.Models.Book>
 @{
-    var pager = (LibraryApp.Models.ViewModels.PagedResult<object>)ViewBag.Pager;
-    var f = ViewBag.Filters;
-    Func<string, string> nextDir = col =>
-        ((string)f.sort == col && (string)f.dir == "asc") ? "desc" : "asc";
+    ViewData["Title"] = "Книги";
+    var q = Context.Request.Query["q"].ToString();
+    int? authorId = int.TryParse(Context.Request.Query["authorId"], out var _a) ? _a : null;
+    int? yearFrom = int.TryParse(Context.Request.Query["yearFrom"], out var _yf) ? _yf : null;
+    int? yearTo = int.TryParse(Context.Request.Query["yearTo"], out var _yt) ? _yt : null;
+    var sort = Context.Request.Query["sort"].ToString();
+    var dir = Context.Request.Query["dir"].ToString();
+    var pageSize = Context.Request.Query["pageSize"].ToString();
 
-    Func<string, string> sortUrl = col => Url.Action("Index", new
-    {
-        q = f.q,
-        authorId = f.authorId,
-        yearFrom = f.yearFrom,
-        yearTo = f.yearTo,
-        sort = col,
-        dir = nextDir(col),
-        page = 1,
-        pageSize = f.pageSize
-    }) ?? string.Empty; // Fix: ensure non-null return
-
-    Func<string, IHtmlContent> caret = col =>
-        new HtmlString(((string)f.sort == col)
-            ? ((string)f.dir == "asc" ? " &#9650;" : " &#9660;") // ▲ / ▼
-            : "");
+    string NextDir(string col) => (sort == col && dir == "asc") ? "desc" : "asc";
+    Func<string, string> Icon = col => sort == col ? $"bi bi-caret-{(dir == "asc" ? "up" : "down")}-fill" : "";
 }
+<div class="d-flex align-items-center justify-content-between mb-3">
+    <h2 class="mb-0"><i class="bi bi-journal-bookmark me-2"></i>Книги</h2>
+    @if (User.IsInRole("Admin") || User.IsInRole("Librarian"))
+    {
+        <a class="btn btn-primary" asp-action="Create"><i class="bi bi-plus-lg me-1"></i> Нова книга</a>
+    }
+</div>
 
-
-
-<h1 class="mb-3">Книги</h1>
-
-<form method="get" class="row g-2 mb-3 align-items-center">
+<form method="get" class="row g-2 align-items-end mb-3">
+    <div class="col-md-4">
+        <label class="form-label">Търсене</label>
+        <input name="q" value="@q" class="form-control" placeholder="Заглавие или автор">
+    </div>
     <div class="col-md-3">
-        <input name="q" value="@f.q" class="form-control" placeholder="Търси: заглавие / ISBN / автор" />
+        <label class="form-label">Автор</label>
+        <select name="authorId" class="form-select" asp-items="@(ViewBag.Authors)"><option value="">-- всички --</option></select>
     </div>
-
-    <div class="col-md-2">
-        <select name="authorId" class="form-select">
-            <option value="">-- Автор --</option>
-            @if (ViewBag.Authors is IEnumerable<SelectListItem> authors)
-            {
-                foreach (var a in authors)
-                {
-                    <option value="@a.Value" selected="@(f.authorId?.ToString() == a.Value)">@a.Text</option>
-                }
-            }
-        </select>
-    </div>
-
-    <div class="col-md-2">
-        <input type="number" name="yearFrom" value="@f.yearFrom" class="form-control" placeholder="От година" />
-    </div>
-    <div class="col-md-2">
-        <input type="number" name="yearTo" value="@f.yearTo" class="form-control" placeholder="До година" />
-    </div>
-
-    <div class="col-md-auto">
-        <button class="btn btn-primary">Филтрирай</button>
-        <a class="btn btn-outline-secondary ms-2" href="@Url.Action("Index")">Изчисти</a>
+    <div class="col-md-2"><label class="form-label">От</label><input name="yearFrom" value="@(yearFrom?.ToString())" class="form-control"></div>
+    <div class="col-md-2"><label class="form-label">До</label><input name="yearTo" value="@(yearTo?.ToString())" class="form-control"></div>
+    <div class="col-auto">
+        <label class="form-label d-block">&nbsp;</label>
+        <button class="btn btn-outline-secondary"><i class="bi bi-search"></i> Търси</button>
+        <a class="btn btn-outline-secondary" asp-action="Index"><i class="bi bi-x"></i> Изчисти</a>
     </div>
 </form>
 
-
-@if (User.IsInRole("Admin") || User.IsInRole("Librarian"))
+@if (!Model.Any())
 {
-    <div class="d-flex justify-content-end mb-2">
-        <a class="btn btn-success" href="@Url.Action("Create")">+ Нова книга</a>
+    <div class="text-center py-5 border rounded bg-light-subtle">
+        <i class="bi bi-inbox display-6 d-block mb-2"></i>
+        <div class="lead">Няма записи</div>
     </div>
 }
-
-
-<table class="table table-hover table-striped align-middle">
-    <thead>
-        <tr>
-            <th>@Html.SortLink("title", "Заглавие", (object)ViewBag.Filters)</th>
-            <th>@Html.SortLink("author", "Автор", (object)ViewBag.Filters)</th>
-            <th>ISBN</th>
-            <th>@Html.SortLink("year", "Година", (object)ViewBag.Filters)</th>
-            <th style="width:220px"></th>
-        </tr>
-    </thead>
-    <tbody>
-        @foreach (var b in Model)
-        {
-            <tr>
-                <td>@b.Title</td>
-                <td>@b.Author?.Name</td>
-                <td>@b.ISBN</td>
-                <td>@b.Year</td>
-
-                <!-- Остави САМО това: -->
-                <td class="text-nowrap">
-                    @await Html.PartialAsync("_CrudActions",
-                    new LibraryApp.Models.ViewModels.CrudActionsModel { Controller = "Books", Id = b.Id })
-            </td>
-        </tr>
-        }
-    </tbody>
-</table>
-
-@await Html.PartialAsync("_Pager", pager)
+else
+{
+    <div class="table-responsive">
+        <table class="table table-hover align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th>
+                        <a asp-action="Index"
+                           asp-route-q="@q" asp-route-authorId="@authorId"
+                           asp-route-yearFrom="@yearFrom" asp-route-yearTo="@yearTo"
+                           asp-route-pageSize="@pageSize"
+                           asp-route-sort="title" asp-route-dir="@NextDir("title")">
+                            Заглавие <i class="@Icon("title")"></i>
+                        </a>
+                    </th>
+                    <th>
+                        <a asp-action="Index"
+                           asp-route-q="@q" asp-route-authorId="@authorId"
+                           asp-route-yearFrom="@yearFrom" asp-route-yearTo="@yearTo"
+                           asp-route-pageSize="@pageSize"
+                           asp-route-sort="author" asp-route-dir="@NextDir("author")">
+                            Автор <i class="@Icon("author")"></i>
+                        </a>
+                    </th>
+                    <th class="text-nowrap">
+                        <a asp-action="Index"
+                           asp-route-q="@q" asp-route-authorId="@authorId"
+                           asp-route-yearFrom="@yearFrom" asp-route-yearTo="@yearTo"
+                           asp-route-pageSize="@pageSize"
+                           asp-route-sort="year" asp-route-dir="@NextDir("year")">
+                            Година <i class="@Icon("year")"></i>
+                        </a>
+                    </th>
+                    <th style="width:1%"></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var b in Model)
+                {
+                    <tr>
+                        <td class="fw-medium">@b.Title</td>
+                        <td>@b.Author?.Name</td>
+                        <td>@b.Year</td>
+                        <td class="text-nowrap">
+                            @{
+                                ViewBag.ViewUrl = Url.Action("Details", new { id = b.Id });
+                                ViewBag.EditUrl = Url.Action("Edit", new { id = b.Id });
+                                ViewBag.DeleteUrl = Url.Action("Delete", new { id = b.Id });
+                                ViewBag.ViewText = "Детайли";
+                            }
+                            <partial name="~/Views/Shared/_CrudActions.cshtml" />
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+    <partial name="~/Views/Shared/_Pager.cshtml" model="ViewBag.Pager" />
+}

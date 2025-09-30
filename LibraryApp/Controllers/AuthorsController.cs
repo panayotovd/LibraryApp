@@ -1,8 +1,9 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using LibraryApp.Models;
 using LibraryApp.Data;
-using Microsoft.AspNetCore.Authorization;
+using LibraryApp.Models;
+using LibraryApp.Models.ViewModels;
 
 namespace LibraryApp.Controllers
 {
@@ -12,156 +13,110 @@ namespace LibraryApp.Controllers
         private readonly LibraryDbContext _db;
         public AuthorsController(LibraryDbContext db) => _db = db;
 
-        // GET: /Authors
         [AllowAnonymous]
-        public async Task<IActionResult> Index(
-            string? q,
-            string? sort = "name",   // name|id
-            string? dir = "asc",     // asc|desc
-            int page = 1,
-            int pageSize = 10)
+        public async Task<IActionResult> Index(string? q, string? sort = "name", string? dir = "asc", int page = 1, int pageSize = 10)
         {
             var query = _db.Authors.AsNoTracking().AsQueryable();
 
-            // Търсене по име
             if (!string.IsNullOrWhiteSpace(q))
             {
-                var pattern = $"%{q}%";
-                query = query.Where(a => EF.Functions.Like(a.Name, pattern));
+                var p = $"%{q}%";
+                query = query.Where(a => EF.Functions.Like(a.Name, p));
             }
 
-            // Сортиране
             bool asc = string.Equals(dir, "asc", StringComparison.OrdinalIgnoreCase);
             query = (sort?.ToLower()) switch
             {
-                "id" => asc ? query.OrderBy(a => a.Id) : query.OrderByDescending(a => a.Id),
-                _ => asc ? query.OrderBy(a => a.Name) : query.OrderByDescending(a => a.Name)
+                "name" => asc ? query.OrderBy(a => a.Name) : query.OrderByDescending(a => a.Name),
+                _ => asc ? query.OrderBy(a => a.Id) : query.OrderByDescending(a => a.Id)
             };
 
-            // Пагинация
-            if (page < 1) page = 1;
-            if (pageSize < 5) pageSize = 5; if (pageSize > 50) pageSize = 50;
+            page = Math.Max(1, page);
+            pageSize = Math.Clamp(pageSize, 5, 50);
 
             var total = await query.CountAsync();
             var items = await query.Skip((page - 1) * pageSize).Take(pageSize).ToListAsync();
 
-            // Query string за pager
-            string baseQs = "?" + string.Join("&", new[]
-            {
-                q is null ? null : $"q={Uri.EscapeDataString(q)}",
-                $"sort={sort}", $"dir={dir}", $"pageSize={pageSize}"
-            }.Where(s => s != null));
-
-            ViewBag.Pager = new LibraryApp.Models.ViewModels.PagedResult<object>
-            {
-                Page = page,
-                PageSize = pageSize,
-                TotalItems = total,
-                QueryString = baseQs
-            };
-            ViewBag.Filters = new { q, sort, dir, pageSize };
-
+            ViewBag.Pager = new PagedResult<object> { Page = page, PageSize = pageSize, TotalItems = total, QueryString = $"?q={q}&sort={sort}&dir={dir}&pageSize={pageSize}" };
             return View(items);
         }
 
-
-        // GET: /Authors/Details/5
         [AllowAnonymous]
         public async Task<IActionResult> Details(int? id)
         {
-            if (id == null) return NotFound();
-            var author = await _db.Authors
-                .Include(a => a.Books)
-                .FirstOrDefaultAsync(a => a.Id == id);
-            if (author == null) return NotFound();
+            if (id is null) return NotFound();
+            var author = await _db.Authors.FirstOrDefaultAsync(a => a.Id == id);
+            if (author is null) return NotFound();
+
+            ViewBag.Books = await _db.Books.AsNoTracking()
+                .Where(b => b.AuthorId == id)
+                .OrderBy(b => b.Title)
+                .ToListAsync();
+
             return View(author);
         }
 
-        // GET: /Authors/Create
         [Authorize(Policy = "CanWrite")]
         public IActionResult Create() => View();
 
-        // POST: /Authors/Create
-        [HttpPost]
-        [ValidateAntiForgeryToken]
+        [HttpPost, ValidateAntiForgeryToken]
         [Authorize(Policy = "CanWrite")]
-        public async Task<IActionResult> Create(Author author)
+        public async Task<IActionResult> Create([Bind("Name")] Author author)
         {
             if (!ModelState.IsValid) return View(author);
-
             _db.Authors.Add(author);
             await _db.SaveChangesAsync();
+            TempData["Success"] = "Автор: създаден.";
             return RedirectToAction(nameof(Index));
         }
 
-        // GET: /Authors/Edit/5
         [Authorize(Policy = "CanWrite")]
         public async Task<IActionResult> Edit(int? id)
         {
-            if (id == null) return NotFound();
-            var author = await _db.Authors.FindAsync(id);
-            if (author == null) return NotFound();
+            if (id is null) return NotFound();
+            var author = await _db.Authors.FindAsync(id.Value);
+            if (author is null) return NotFound();
             return View(author);
         }
 
-        // POST: /Authors/Edit/5
-        [HttpPost]
-        [ValidateAntiForgeryToken]
+        [HttpPost, ValidateAntiForgeryToken]
         [Authorize(Policy = "CanWrite")]
-        public async Task<IActionResult> Edit(int id, Author author)
+        public async Task<IActionResult> Edit(int id, [Bind("Id,Name")] Author author)
         {
             if (id != author.Id) return NotFound();
             if (!ModelState.IsValid) return View(author);
-
-            try
-            {
-                _db.Update(author);
-                await _db.SaveChangesAsync();
-                return RedirectToAction(nameof(Index));
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!await _db.Authors.AnyAsync(a => a.Id == id)) return NotFound();
-                throw;
-            }
+            _db.Entry(author).State = EntityState.Modified;
+            await _db.SaveChangesAsync();
+            TempData["Success"] = "Автор: обновен.";
+            return RedirectToAction(nameof(Index));
         }
 
-        // GET: /Authors/Delete/5
         [Authorize(Policy = "CanWrite")]
         public async Task<IActionResult> Delete(int? id)
         {
-            if (id == null) return NotFound();
-            var author = await _db.Authors
-                .Include(a => a.Books)
-                .FirstOrDefaultAsync(a => a.Id == id);
-            if (author == null) return NotFound();
-
-            if (author.Books?.Any() == true)
-                ViewBag.BlockReason = "Авторът има свързани книги и не може да бъде изтрит.";
-
+            if (id is null) return NotFound();
+            var author = await _db.Authors.FirstOrDefaultAsync(a => a.Id == id);
+            if (author is null) return NotFound();
             return View(author);
         }
 
-        // POST: /Authors/Delete/5
-        [HttpPost, ActionName("Delete")]
-        [ValidateAntiForgeryToken]
+        [HttpPost, ActionName("Delete"), ValidateAntiForgeryToken]
         [Authorize(Policy = "CanWrite")]
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
-            var author = await _db.Authors
-                .Include(a => a.Books)
-                .FirstOrDefaultAsync(a => a.Id == id);
-
+            var author = await _db.Authors.FindAsync(id);
             if (author == null) return RedirectToAction(nameof(Index));
 
-            if (author.Books?.Any() == true)
+            var booksCount = await _db.Books.CountAsync(b => b.AuthorId == id);
+            if (booksCount > 0)
             {
-                TempData["Error"] = "Не може да изтриеш автор, който има книги.";
-                return RedirectToAction(nameof(Delete), new { id });
+                TempData["Error"] = $"Авторът има свързани книги. Първо ги прехвърли на друг автор или изтрий тези книги.";
+                return RedirectToAction(nameof(Details), new { id });
             }
 
             _db.Authors.Remove(author);
             await _db.SaveChangesAsync();
+            TempData["Success"] = "Автор: изтрит.";
             return RedirectToAction(nameof(Index));
         }
     }
